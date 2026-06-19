@@ -370,3 +370,41 @@ impl Tool for CreatePptxTool {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[tokio::test]
+    async fn test_document_generation() {
+        let input = json!({
+            "title": "Test Integration Document",
+            "sections": [
+                {
+                    "heading": "Introduction",
+                    "body": "This is a test document section verifying docgen output tools."
+                }
+            ],
+            "citations": [
+                {
+                    "id": 1,
+                    "title": "Test Reference",
+                    "url_or_doi": "https://example.com"
+                }
+            ],
+            "filename": "test_integration_output"
+        });
+
+        // Test Docx Tool
+        let result_docx = CreateDocxTool.call(input.clone()).await;
+        assert!(result_docx.is_ok(), "DOCX generation failed: {:?}", result_docx.err());
+
+        // Test PPTX Tool
+        let result_pptx = CreatePptxTool.call(input.clone()).await;
+        assert!(result_pptx.is_ok(), "PPTX generation failed: {:?}", result_pptx.err());
+
+        // Test PDF Tool (PDF generation might fail if no TrueType fonts are present on the host environment, but we exercise the call path)
+        let _result_pdf = CreatePdfTool.call(input.clone()).await;
+    }
+}

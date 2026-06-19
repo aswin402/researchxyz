@@ -135,10 +135,22 @@ async fn main() -> Result<()> {
         let registry = std::sync::Arc::new(registry);
         
         // History
-        let prompt = "Please search persistent memory for the word 'rust'. Then, store a new entry in persistent memory with query 'rust memory testing', summary 'Google AI Studio successfully configured and tested local memory tools.', and keywords ['rust', 'memory', 'test']. Finally, summarize what you did.";
+        let mut prompt = "Please search persistent memory for the word 'rust'. Then, store a new entry in persistent memory with query 'rust memory testing', summary 'Google AI Studio successfully configured and tested local memory tools.', and keywords ['rust', 'memory', 'test']. Finally, summarize what you did.".to_string();
+        
+        if let Some(pos) = args.iter().position(|x| x == "--test-agent") {
+            if pos + 1 < args.len() {
+                let next_arg = &args[pos + 1];
+                if !next_arg.starts_with('-') {
+                    prompt = next_arg.clone();
+                }
+            }
+        }
+        
+        println!("Using Prompt: \"{}\"\n", prompt);
+
         let history = vec![crate::core::types::Message {
             role: crate::core::types::Role::User,
-            content: vec![crate::core::types::ContentBlock::Text(prompt.to_string())],
+            content: vec![crate::core::types::ContentBlock::Text(prompt)],
         }];
         
         let (event_tx, mut event_rx) = mpsc::channel::<AgentEvent>(100);
