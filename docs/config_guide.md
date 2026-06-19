@@ -50,3 +50,19 @@ If this file is missing, the agent falls back to using DuckDuckGo scraping, stan
 *   `alias`: Target name (e.g., `"ppt_mcp"`).
 *   `command`: Executable command (e.g., `"ppt-rs"`).
 *   `args`: Command arguments.
+
+---
+
+## 3. Font Requirements for PDF Generation 📄
+
+PDF generation uses the native `genpdf` crate, which requires TrueType fonts (`.ttf` files) to perform text formatting and layout calculations. ResearchXYZ has a built-in search sequence that checks the following standard paths on Linux:
+
+1.  **FreeSans** in `/usr/share/fonts/truetype/freefont/`
+2.  **DejaVuSans** in `/usr/share/fonts/truetype/dejavu/`
+3.  **LiberationSans** in `/usr/share/fonts/truetype/liberation/`
+
+To ensure PDF documents compile successfully, make sure at least one of these font families is installed on your Linux system. For example, on Debian/Ubuntu-based systems, you can install them using:
+```bash
+sudo apt-get install fonts-freefont-ttf fonts-dejavu fonts-liberation
+```
+If no fonts are found, the PDF creation tool will return an upstream compilation error explaining that no standard TrueType fonts could be loaded.
