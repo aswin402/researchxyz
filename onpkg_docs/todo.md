@@ -52,4 +52,7 @@ This checklist tracks progress on the five development phases of `researchxyz`.
 - [ ] Customize TUI Theme (default dark theme matching Antigravity color system).
 - [ ] Show elapsed time, tokens, and active operations in status bar.
 - [ ] Validate startup configurations with explicit error messaging.
-- [ ] Write detailed installation instructions and README documentation.
+- [x] Write detailed installation instructions and README documentation.
+- [x] Implement interactive CLI configuration wizard (`researchxyz configure`).
+- [x] Implement dynamic in-TUI model selection popup overlay via `/model` command.
+
