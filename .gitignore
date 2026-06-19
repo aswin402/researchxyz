@@ -1,0 +1,7 @@
+/target
+/workspace/downloads
+/workspace/reports
+/workspace/documents
+/workspace/cache
+*.log
+.env

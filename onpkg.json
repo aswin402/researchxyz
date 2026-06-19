@@ -1,0 +1,91 @@
+{
+  "agent_instructions": {
+    "active_skills": [
+      "core.md",
+      "rust.md",
+      "spec.md"
+    ],
+    "docs_directory": "onpkg_docs/"
+  },
+  "architecture": {
+    "entrypoint": "src/main.rs"
+  },
+  "packages": {
+    "added_by_agent": [],
+    "core": [
+      "anyhow",
+      "async-trait",
+      "calamine",
+      "chrono",
+      "crossterm",
+      "docx-rs",
+      "ego-tree",
+      "futures",
+      "genpdf",
+      "pdf-extract",
+      "percent-encoding",
+      "ppt-rs",
+      "ratatui",
+      "regex",
+      "reqwest",
+      "rmcp",
+      "scraper",
+      "serde",
+      "serde_json",
+      "thiserror",
+      "tokio",
+      "toml",
+      "tracing",
+      "tracing-subscriber",
+      "tui-textarea"
+    ]
+  },
+  "project": {
+    "name": "researchxyz",
+    "package_manager": "cargo",
+    "runtime": "rust",
+    "stack": "rust-cli"
+  },
+  "scripts": {
+    "build": "cargo build",
+    "dev": "cargo run",
+    "test": "cargo test"
+  },
+  "sources": {
+    "directories": [
+      "config",
+      "src",
+      "src/core",
+      "src/mcp",
+      "src/tools",
+      "src/tui"
+    ],
+    "file_patterns": [
+      "*.md",
+      "*.rs",
+      "*.toml"
+    ],
+    "files": [
+      "Cargo.toml",
+      "README.md",
+      "config/researchxyz.example.toml",
+      "src/app.rs",
+      "src/config.rs",
+      "src/core/agent.rs",
+      "src/core/mod.rs",
+      "src/core/registry.rs",
+      "src/core/types.rs",
+      "src/main.rs",
+      "src/mcp/client.rs",
+      "src/mcp/mod.rs",
+      "src/tools/academic.rs",
+      "src/tools/docgen.rs",
+      "src/tools/docreader.rs",
+      "src/tools/mod.rs",
+      "src/tools/web.rs",
+      "src/tui/draw.rs",
+      "src/tui/mod.rs",
+      "src/tui/theme.rs"
+    ]
+  }
+}
