@@ -39,7 +39,8 @@ Existing AI research tools are either heavyweight desktop/web products with limi
 | **Citations** | Every synthesized claim in a generated document is traceable to a source URL/DOI captured during the session. |
 | **Tool Extensibility** | New native tools can be added by implementing one Rust trait; new external tools can be added by connecting an MCP server. |
 | **Session Control** | User can interrupt a running tool call, review what the agent is about to do (for file-writing actions), and resume. |
-| **Config** | A single TOML config file controls LLM provider/key, search backend, output directory, and connected MCP servers. |
+| **Config** | A single TOML config file controls LLM provider/key, search backend, output directory, and connected MCP servers. Supports interactive wizard setup via `researchxyz configure` and dynamic provider/model selection popup overlay `/model` within the TUI. |
+
 
 ## 7. Success Metrics
 - Cold start to first prompt rendered: under 150ms.

@@ -173,6 +173,8 @@ pub struct Theme {
 provider = "anthropic"
 model = "claude-sonnet-4-6"
 api_key_env = "RESEARCHXYZ_API_KEY"
+api_base = "https://api.anthropic.com"  # (Optional) custom base URL endpoint
+api_key = "sk-ant-..."                  # (Optional) direct API key
 
 [output]
 dir = "~/researchxyz-output"
