@@ -102,6 +102,12 @@ Configure `config.toml` to specify your preferred LLM provider, target model, se
     cargo run --release
     ```
     *   **Controls**: Type inside the prompt box. Press **`Ctrl+Enter`** to submit a research query. Press **`Esc`** to quit.
+    *   **Changing Models**: Type **`/model`** in the prompt box and press **`Ctrl+Enter`** to open the interactive selection overlay. Use Up/Down arrows to choose a provider and model, and Enter to select.
+*   **Configure Mode**:
+    ```bash
+    cargo run --release -- configure
+    ```
+    *   Walks you through selecting a provider, model, and pasting your API key, then saves the configuration to `~/.config/researchxyz/config.toml`.
 *   **Dual Mode Behavior**:
     *   If your **`RESEARCHXYZ_API_KEY`** is set in your environment: Runs the real Anthropic ReAct loop, calling web scrapers, reading files, and conducting live research.
     *   If your key is **not set**: Runs in **simulation mode** to showcase interface animations, tool spinners, and document updates offline.

@@ -41,6 +41,14 @@ pub struct App {
     pub tokens_used: usize,
     pub model_name: String,
     pub running: bool,
+    
+    // Model selection menu state
+    pub model_menu_active: bool,
+    pub model_menu_step: u8, // 0 = select provider, 1 = select model
+    pub selected_provider_idx: usize,
+    pub selected_model_idx: usize,
+    pub providers: Vec<String>,
+    pub models: Vec<String>,
 }
 
 impl App {
@@ -53,12 +61,65 @@ impl App {
                 }
             ],
             input_buffer: String::new(),
-            active_tab: ActiveTab::Chat, // Wait! Standard Rust path syntax is ActiveTab::Chat. Let's fix this in CodeContent.
+            active_tab: ActiveTab::Chat,
             status: "Idle".to_string(),
             tokens_used: 0,
             model_name: "claude-sonnet-4-6".to_string(),
             running: true,
+            
+            model_menu_active: false,
+            model_menu_step: 0,
+            selected_provider_idx: 0,
+            selected_model_idx: 0,
+            providers: vec![
+                "anthropic".to_string(),
+                "openai".to_string(),
+                "deepseek".to_string(),
+                "groq".to_string(),
+                "openrouter".to_string(),
+                "google_ai_studio".to_string(),
+                "auto".to_string(),
+            ],
+            models: Vec::new(),
         }
+    }
+
+    pub fn update_models_list(&mut self) {
+        let provider = &self.providers[self.selected_provider_idx];
+        self.models = match provider.as_str() {
+            "anthropic" => vec![
+                "claude-3-5-sonnet-latest".to_string(),
+                "claude-3-5-haiku-latest".to_string(),
+                "claude-3-opus-latest".to_string(),
+            ],
+            "openai" => vec![
+                "gpt-4o".to_string(),
+                "gpt-4o-mini".to_string(),
+                "o1-mini".to_string(),
+                "o3-mini".to_string(),
+            ],
+            "deepseek" => vec![
+                "deepseek-chat".to_string(),
+                "deepseek-reasoner".to_string(),
+            ],
+            "groq" => vec![
+                "llama-3.3-70b-versatile".to_string(),
+                "mixtral-8x7b-32768".to_string(),
+            ],
+            "openrouter" => vec![
+                "google/gemini-2.0-flash-exp:free".to_string(),
+                "meta-llama/llama-3.3-70b-instruct:free".to_string(),
+                "deepseek/deepseek-chat".to_string(),
+            ],
+            "google_ai_studio" => vec![
+                "gemini-2.5-flash".to_string(),
+                "gemini-2.5-pro".to_string(),
+            ],
+            _ => vec![
+                "auto-detect".to_string(),
+            ],
+        };
+        self.selected_model_idx = 0;
     }
 
     pub fn handle_event(&mut self, event: AgentEvent) {

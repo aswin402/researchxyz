@@ -4,6 +4,16 @@ Configuration details for setting up the `researchxyz` parameters.
 
 ---
 
+## 0. Quick Config Wizard 🧙‍♂️
+
+Instead of editing `config.toml` manually, you can run the interactive CLI configuration wizard:
+```bash
+cargo run -- configure
+```
+This wizard will prompt you to select an LLM provider (OpenAI, Anthropic, DeepSeek, Groq, OpenRouter, Google AI Studio, or Auto), set a default model, paste your API key (masked input), and optionally configure a custom base URL. It will automatically save the settings to `~/.config/researchxyz/config.toml`.
+
+---
+
 ## 1. File Locations
 
 `researchxyz` expects a TOML file located at:

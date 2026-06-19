@@ -296,17 +296,18 @@ pub fn resolve_client(config: &crate::config::Config) -> Result<Arc<dyn LlmClien
     }
 
     // Resolve API Key
-    let api_key = std::env::var(&config.llm.api_key_env)
-        .or_else(|_| std::env::var("RESEARCHXYZ_API_KEY"))
-        .or_else(|_| {
+    let api_key = config.llm.api_key.clone()
+        .or_else(|| std::env::var(&config.llm.api_key_env).ok())
+        .or_else(|| std::env::var("RESEARCHXYZ_API_KEY").ok())
+        .or_else(|| {
             match provider.as_str() {
-                "anthropic" => std::env::var("ANTHROPIC_API_KEY"),
-                "openai" => std::env::var("OPENAI_API_KEY"),
-                "deepseek" => std::env::var("DEEPSEEK_API_KEY"),
-                "groq" => std::env::var("GROQ_API_KEY"),
-                "openrouter" => std::env::var("OPENROUTER_API_KEY"),
-                "google_ai_studio" => std::env::var("GOOGLE_AI_STUDIO_API_KEY"),
-                _ => std::env::var("OPENAI_API_KEY"),
+                "anthropic" => std::env::var("ANTHROPIC_API_KEY").ok(),
+                "openai" => std::env::var("OPENAI_API_KEY").ok(),
+                "deepseek" => std::env::var("DEEPSEEK_API_KEY").ok(),
+                "groq" => std::env::var("GROQ_API_KEY").ok(),
+                "openrouter" => std::env::var("OPENROUTER_API_KEY").ok(),
+                "google_ai_studio" => std::env::var("GOOGLE_AI_STUDIO_API_KEY").ok(),
+                _ => std::env::var("OPENAI_API_KEY").ok(),
             }
         })
         .unwrap_or_default();

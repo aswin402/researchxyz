@@ -23,10 +23,13 @@ The screen is divided horizontally into three main areas:
 
 | Key Combination | Action |
 | :--- | :--- |
-| **`Ctrl+Enter`** | Submit the prompt to start research. |
-| **`Esc`** | Exit the application and restore terminal raw settings. |
+| **`Ctrl+Enter`** | Submit the prompt to start research, or trigger commands. |
+| **`/model`** | Type `/model` and press `Ctrl+Enter` to open the model/provider selection popup. |
+| **`Esc`** | Cancel/exit the active popups, or exit the application (restoring terminal settings). |
 | **`Backspace` / `Delete`** | Edit prompt characters. |
-| **`Left` / `Right` / `Up` / `Down` Arrow keys** | Move cursor inside the input area. |
+| **`Left` / `Right` Arrow keys** | Move cursor inside the input area. |
+| **`Up` / `Down` Arrow keys** | Move cursor inside the input area (or navigate selections when model selection overlay is open). |
+| **`Enter`** | Select/confirm the active option in the selection popup overlay. |
 
 ---
 

@@ -4,7 +4,7 @@ use ratatui::{
     layout::{Constraint, Layout, Rect},
     style::{Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, Paragraph, Wrap},
+    widgets::{Block, Borders, Paragraph, Wrap, Clear},
     Frame,
 };
 
@@ -29,6 +29,11 @@ pub fn draw(frame: &mut Frame, app: &App, theme: &Theme, textarea: &tui_textarea
 
     // 5. Render Input Box
     draw_input_box(frame, chunks[2], theme, textarea);
+
+    // 6. Render Model Menu (Popup Overlay)
+    if app.model_menu_active {
+        draw_model_menu(frame, frame.area(), app, theme);
+    }
 }
 
 fn draw_conversation_pane(frame: &mut Frame, area: Rect, app: &App, theme: &Theme) {
@@ -125,4 +130,96 @@ fn draw_input_box(frame: &mut Frame, area: Rect, theme: &Theme, textarea: &tui_t
 
     frame.render_widget(block, area);
     frame.render_widget(textarea.widget(), inner_area);
+}
+
+fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
+    let popup_layout = Layout::vertical([
+        Constraint::Percentage((100 - percent_y) / 2),
+        Constraint::Percentage(percent_y),
+        Constraint::Percentage((100 - percent_y) / 2),
+    ])
+    .split(r);
+    Layout::horizontal([
+        Constraint::Percentage((100 - percent_x) / 2),
+        Constraint::Percentage(percent_x),
+        Constraint::Percentage((100 - percent_x) / 2),
+    ])
+    .split(popup_layout[1])[1]
+}
+
+fn draw_model_menu(frame: &mut Frame, area: Rect, app: &App, theme: &Theme) {
+    let popup_area = centered_rect(50, 50, area);
+    
+    // Clear background
+    frame.render_widget(Clear, popup_area);
+
+    let title = if app.model_menu_step == 0 {
+        " Select Provider "
+    } else {
+        " Select Model "
+    };
+
+    let block = Block::default()
+        .borders(Borders::ALL)
+        .border_style(Style::default().fg(theme.accent))
+        .style(Style::default().bg(theme.surface))
+        .title(Span::styled(title, Style::default().fg(theme.accent).add_modifier(Modifier::BOLD)));
+
+    let mut lines = Vec::new();
+    lines.push(Line::from("")); // padding
+
+    if app.model_menu_step == 0 {
+        for (i, provider) in app.providers.iter().enumerate() {
+            if i == app.selected_provider_idx {
+                lines.push(Line::from(vec![
+                    Span::styled("  ● ", Style::default().fg(theme.accent).add_modifier(Modifier::BOLD)),
+                    Span::styled(provider, Style::default().fg(theme.text).add_modifier(Modifier::BOLD)),
+                ]));
+            } else {
+                lines.push(Line::from(vec![
+                    Span::styled("  ○ ", Style::default().fg(theme.text_dim)),
+                    Span::styled(provider, Style::default().fg(theme.text_dim)),
+                ]));
+            }
+        }
+    } else {
+        for (i, model) in app.models.iter().enumerate() {
+            if i == app.selected_model_idx {
+                lines.push(Line::from(vec![
+                    Span::styled("  ● ", Style::default().fg(theme.accent).add_modifier(Modifier::BOLD)),
+                    Span::styled(model, Style::default().fg(theme.text).add_modifier(Modifier::BOLD)),
+                ]));
+            } else {
+                lines.push(Line::from(vec![
+                    Span::styled("  ○ ", Style::default().fg(theme.text_dim)),
+                    Span::styled(model, Style::default().fg(theme.text_dim)),
+                ]));
+            }
+        }
+        if app.models.is_empty() {
+            lines.push(Line::from(vec![
+                Span::styled("  No models configured", Style::default().fg(theme.error)),
+            ]));
+        }
+    }
+
+    lines.push(Line::from("")); // padding
+    lines.push(Line::from(Span::styled(
+        "  ──────────────────────────────────────────",
+        Style::default().fg(theme.border),
+    )));
+    lines.push(Line::from(vec![
+        Span::styled("  [↑/↓] ", Style::default().fg(theme.accent)),
+        Span::styled("Navigate   ", Style::default().fg(theme.text_dim)),
+        Span::styled("[Enter] ", Style::default().fg(theme.accent)),
+        Span::styled("Select   ", Style::default().fg(theme.text_dim)),
+        Span::styled("[Esc] ", Style::default().fg(theme.accent)),
+        Span::styled("Cancel", Style::default().fg(theme.text_dim)),
+    ]));
+
+    let paragraph = Paragraph::new(lines)
+        .block(block)
+        .wrap(Wrap { trim: false });
+
+    frame.render_widget(paragraph, popup_area);
 }

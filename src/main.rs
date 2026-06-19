@@ -75,10 +75,14 @@ mod tracing_appender {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    // Check version flags
     let args: Vec<String> = std::env::args().collect();
     if args.contains(&"--version".to_string()) || args.contains(&"-v".to_string()) {
         println!("researchxyz v0.0.1");
+        return Ok(());
+    }
+
+    if args.contains(&"configure".to_string()) {
+        crate::config::run_configure_wizard()?;
         return Ok(());
     }
 
@@ -87,8 +91,8 @@ async fn main() -> Result<()> {
     
     let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
     let config_path = PathBuf::from(home).join(".config/researchxyz/config.toml");
-    let config = if config_path.exists() {
-        Config::load_from_path(config_path).unwrap_or_else(|_| Config::default_config())
+    let mut config = if config_path.exists() {
+        Config::load_from_path(&config_path).unwrap_or_else(|_| Config::default_config())
     } else {
         Config::default_config()
     };
@@ -106,6 +110,7 @@ async fn main() -> Result<()> {
 
     // 3. Initialize UI State & Input Box
     let mut app = App::new();
+    app.model_name = config.llm.model.clone();
     let theme = Theme::default_dark();
     let mut textarea = TextArea::default();
     
@@ -144,126 +149,192 @@ async fn main() -> Result<()> {
             // Terminal user inputs
             Some(Ok(event)) = reader.next() => {
                 if let Event::Key(key) = event {
-                    match key.code {
-                        // Exit application
-                        KeyCode::Esc => {
-                            app.running = false;
+                    if app.model_menu_active {
+                        match key.code {
+                            KeyCode::Up => {
+                                if app.model_menu_step == 0 {
+                                    if app.selected_provider_idx > 0 {
+                                        app.selected_provider_idx -= 1;
+                                    } else {
+                                        app.selected_provider_idx = app.providers.len() - 1;
+                                    }
+                                } else {
+                                    if app.selected_model_idx > 0 {
+                                        app.selected_model_idx -= 1;
+                                    } else {
+                                        app.selected_model_idx = app.models.len().saturating_sub(1);
+                                    }
+                                }
+                            }
+                            KeyCode::Down => {
+                                if app.model_menu_step == 0 {
+                                    if app.selected_provider_idx + 1 < app.providers.len() {
+                                        app.selected_provider_idx += 1;
+                                    } else {
+                                        app.selected_provider_idx = 0;
+                                    }
+                                } else {
+                                    if !app.models.is_empty() {
+                                        if app.selected_model_idx + 1 < app.models.len() {
+                                            app.selected_model_idx += 1;
+                                        } else {
+                                            app.selected_model_idx = 0;
+                                        }
+                                    }
+                                }
+                            }
+                            KeyCode::Enter => {
+                                if app.model_menu_step == 0 {
+                                    app.update_models_list();
+                                    app.model_menu_step = 1;
+                                } else {
+                                    if !app.models.is_empty() {
+                                        let provider = app.providers[app.selected_provider_idx].clone();
+                                        let model = app.models[app.selected_model_idx].clone();
+                                        config.llm.provider = provider.clone();
+                                        config.llm.model = model.clone();
+                                        let _ = config.save_to_path(&config_path);
+                                        app.model_name = model;
+                                    }
+                                    app.model_menu_active = false;
+                                }
+                            }
+                            KeyCode::Esc => {
+                                app.model_menu_active = false;
+                            }
+                            _ => {}
                         }
-                        
-                        // Submit prompt (Ctrl+Enter or Ctrl+J in some environments)
-                        KeyCode::Enter if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                            let input_lines = textarea.lines().join("\n");
-                            let trimmed = input_lines.trim();
-                            if !trimmed.is_empty() {
-                                // Add user prompt to screen
-                                app.chat_lines.push(ChatLine::UserPrompt(trimmed.to_string()));
-                                app.chat_lines.push(ChatLine::TextDelta {
-                                    text: String::new(),
-                                    complete: false,
-                                });
-                                app.status = "Thinking...".to_string();
-                                
-                                // Reset text input
-                                textarea = TextArea::default();
-                                textarea.set_placeholder_text("Ask a research query... (Ctrl+Enter to send, Esc to exit)");
-                                
-                                let tx = event_tx.clone();
-                                let prompt = trimmed.to_string();
-                                
-                                // Convert prompt to message history
-                                let user_msg = crate::core::types::Message {
-                                    role: crate::core::types::Role::User,
-                                    content: vec![crate::core::types::ContentBlock::Text(prompt.clone())],
-                                };
-                                history.push(user_msg.clone());
-                                
-                                let history_clone = history.clone();
-                                let registry_clone = registry.clone();
-                                let config_clone = config.clone();
-                                
-                                tokio::spawn(async move {
-                                    match crate::core::agent::resolve_client(&config_clone) {
-                                        Ok(client) => {
-                                            match crate::core::agent::run_turn(&history_clone, client, registry_clone, tx.clone()).await {
-                                                Ok(_updated_history) => {
-                                                    // Turn completed successfully
+                    } else {
+                        match key.code {
+                            // Exit application
+                            KeyCode::Esc => {
+                                app.running = false;
+                            }
+                            
+                            // Submit prompt (Ctrl+Enter or Ctrl+J in some environments)
+                            KeyCode::Enter if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                                let input_lines = textarea.lines().join("\n");
+                                let trimmed = input_lines.trim();
+                                if !trimmed.is_empty() {
+                                    if trimmed == "/model" {
+                                        textarea = TextArea::default();
+                                        textarea.set_placeholder_text("Ask a research query... (Ctrl+Enter to send, Esc to exit)");
+                                        app.model_menu_active = true;
+                                        app.model_menu_step = 0;
+                                        app.selected_provider_idx = 0;
+                                        app.selected_model_idx = 0;
+                                    } else {
+                                        // Add user prompt to screen
+                                        app.chat_lines.push(ChatLine::UserPrompt(trimmed.to_string()));
+                                        app.chat_lines.push(ChatLine::TextDelta {
+                                            text: String::new(),
+                                            complete: false,
+                                        });
+                                        app.status = "Thinking...".to_string();
+                                        
+                                        // Reset text input
+                                        textarea = TextArea::default();
+                                        textarea.set_placeholder_text("Ask a research query... (Ctrl+Enter to send, Esc to exit)");
+                                        
+                                        let tx = event_tx.clone();
+                                        let prompt = trimmed.to_string();
+                                        
+                                        // Convert prompt to message history
+                                        let user_msg = crate::core::types::Message {
+                                            role: crate::core::types::Role::User,
+                                            content: vec![crate::core::types::ContentBlock::Text(prompt.clone())],
+                                        };
+                                        history.push(user_msg.clone());
+                                        
+                                        let history_clone = history.clone();
+                                        let registry_clone = registry.clone();
+                                        let config_clone = config.clone();
+                                        
+                                        tokio::spawn(async move {
+                                            match crate::core::agent::resolve_client(&config_clone) {
+                                                Ok(client) => {
+                                                    match crate::core::agent::run_turn(&history_clone, client, registry_clone, tx.clone()).await {
+                                                        Ok(_updated_history) => {
+                                                            // Turn completed successfully
+                                                        }
+                                                        Err(e) => {
+                                                            let _ = tx.send(AgentEvent::TextDelta(format!("\nError running turn: {}\n", e))).await;
+                                                            let _ = tx.send(AgentEvent::TurnComplete).await;
+                                                        }
+                                                    }
                                                 }
-                                                Err(e) => {
-                                                    let _ = tx.send(AgentEvent::TextDelta(format!("\nError running turn: {}\n", e))).await;
+                                                Err(err) => {
+                                                    // Run simulation mode
+                                                    let _ = tx.send(AgentEvent::TextDelta(format!("Warning: Client resolution failed: {}. Running in simulation mode...\n", err))).await;
+                                                    tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+                                                    let _ = tx.send(AgentEvent::TextDelta(format!("Beginning simulated literature scan on: {}\n", prompt))).await;
+                                                    tokio::time::sleep(tokio::time::Duration::from_millis(800)).await;
+                                                    
+                                                    // 1. Search tool call
+                                                    let tool_id = "call_search_1".to_string();
+                                                    let _ = tx.send(AgentEvent::ToolCallStarted {
+                                                        id: tool_id.clone(),
+                                                        name: "academic_search".to_string(),
+                                                        input: serde_json::json!({ "query": prompt }),
+                                                    }).await;
+                                                    tokio::time::sleep(tokio::time::Duration::from_millis(1500)).await;
+                                                    
+                                                    let _ = tx.send(AgentEvent::ToolCallFinished {
+                                                        id: tool_id,
+                                                        name: "academic_search".to_string(),
+                                                        result: Ok(crate::core::types::ToolResult {
+                                                            content: "Successfully fetched papers.".to_string(),
+                                                            citations: vec![crate::core::types::SourceRef {
+                                                                id: 1,
+                                                                url: Some("https://arxiv.org/abs/2103.00001".to_string()),
+                                                                doi: Some("10.48550/arXiv.2103.00001".to_string()),
+                                                                title: "Literature Survey Paper".to_string(),
+                                                            }],
+                                                        }),
+                                                    }).await;
+                                                    
+                                                    // 2. Summarization
+                                                    tokio::time::sleep(tokio::time::Duration::from_millis(800)).await;
+                                                    let _ = tx.send(AgentEvent::TextDelta("Synthesizing results... Found 1 highly relevant paper. Generating reports.\n".to_string())).await;
+                                                    
+                                                    // 3. File compilation tool call
+                                                    let doc_tool_id = "call_pdf_1".to_string();
+                                                    let _ = tx.send(AgentEvent::ToolCallStarted {
+                                                        id: doc_tool_id.clone(),
+                                                        name: "create_pdf".to_string(),
+                                                        input: serde_json::json!({ "title": prompt }),
+                                                    }).await;
+                                                    tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await;
+                                                    
+                                                    let file_path = PathBuf::from("workspace/documents/literature-scan.pdf");
+                                                    let _ = tx.send(AgentEvent::ToolCallFinished {
+                                                        id: doc_tool_id,
+                                                        name: "create_pdf".to_string(),
+                                                        result: Ok(crate::core::types::ToolResult {
+                                                            content: "PDF written.".to_string(),
+                                                            citations: vec![],
+                                                        }),
+                                                    }).await;
+                                                    
+                                                    let _ = tx.send(AgentEvent::FileWritten {
+                                                        path: file_path,
+                                                        kind: crate::core::types::DocKind::Pdf,
+                                                    }).await;
+                                                    
+                                                    // 4. Completion
+                                                    tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
                                                     let _ = tx.send(AgentEvent::TurnComplete).await;
                                                 }
                                             }
-                                        }
-                                        Err(err) => {
-                                            // Run simulation mode
-                                            let _ = tx.send(AgentEvent::TextDelta(format!("Warning: Client resolution failed: {}. Running in simulation mode...\n", err))).await;
-                                        tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
-                                        let _ = tx.send(AgentEvent::TextDelta(format!("Beginning simulated literature scan on: {}\n", prompt))).await;
-                                        tokio::time::sleep(tokio::time::Duration::from_millis(800)).await;
-                                        
-                                        // 1. Search tool call
-                                        let tool_id = "call_search_1".to_string();
-                                        let _ = tx.send(AgentEvent::ToolCallStarted {
-                                            id: tool_id.clone(),
-                                            name: "academic_search".to_string(),
-                                            input: serde_json::json!({ "query": prompt }),
-                                        }).await;
-                                        tokio::time::sleep(tokio::time::Duration::from_millis(1500)).await;
-                                        
-                                        let _ = tx.send(AgentEvent::ToolCallFinished {
-                                            id: tool_id,
-                                            name: "academic_search".to_string(),
-                                            result: Ok(crate::core::types::ToolResult {
-                                                content: "Successfully fetched papers.".to_string(),
-                                                citations: vec![crate::core::types::SourceRef {
-                                                    id: 1,
-                                                    url: Some("https://arxiv.org/abs/2103.00001".to_string()),
-                                                    doi: Some("10.48550/arXiv.2103.00001".to_string()),
-                                                    title: "Literature Survey Paper".to_string(),
-                                                }],
-                                            }),
-                                        }).await;
-                                        
-                                        // 2. Summarization
-                                        tokio::time::sleep(tokio::time::Duration::from_millis(800)).await;
-                                        let _ = tx.send(AgentEvent::TextDelta("Synthesizing results... Found 1 highly relevant paper. Generating reports.\n".to_string())).await;
-                                        
-                                        // 3. File compilation tool call
-                                        let doc_tool_id = "call_pdf_1".to_string();
-                                        let _ = tx.send(AgentEvent::ToolCallStarted {
-                                            id: doc_tool_id.clone(),
-                                            name: "create_pdf".to_string(),
-                                            input: serde_json::json!({ "title": prompt }),
-                                        }).await;
-                                        tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await;
-                                        
-                                        let file_path = PathBuf::from("workspace/documents/literature-scan.pdf");
-                                        let _ = tx.send(AgentEvent::ToolCallFinished {
-                                            id: doc_tool_id,
-                                            name: "create_pdf".to_string(),
-                                            result: Ok(crate::core::types::ToolResult {
-                                                content: "PDF written.".to_string(),
-                                                citations: vec![],
-                                            }),
-                                        }).await;
-                                        
-                                        let _ = tx.send(AgentEvent::FileWritten {
-                                            path: file_path,
-                                            kind: crate::core::types::DocKind::Pdf,
-                                        }).await;
-                                        
-                                        // 4. Completion
-                                        tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
-                                        let _ = tx.send(AgentEvent::TurnComplete).await;
+                                        });
                                     }
                                 }
-                            });
                             }
-                        }
-                        
-                        // Pass other keystrokes to the active text box
-                        _ => {
-                            textarea.input(key);
+                            
+                            // Pass other keystrokes to the active text box
+                            _ => {
+                                textarea.input(key);
+                            }
                         }
                     }
                 }
