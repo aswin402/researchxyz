@@ -11,7 +11,7 @@ use crate::core::types::AgentEvent;
 use crate::tui::Theme;
 use anyhow::Result;
 use crossterm::{
-    event::{Event, EventStream, KeyCode, KeyModifiers},
+    event::{Event, EventStream, KeyCode},
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
@@ -127,7 +127,7 @@ async fn main() -> Result<()> {
     
     let mut history: Vec<crate::core::types::Message> = Vec::new();
 
-    textarea.set_placeholder_text("Ask a research query... (Ctrl+Enter to send, Esc to exit)");
+    textarea.set_placeholder_text("Ask a research query... (Enter to send, Esc to exit)");
 
     // 4. Communication Channels
     let (event_tx, mut event_rx) = mpsc::channel::<AgentEvent>(100);
@@ -211,14 +211,14 @@ async fn main() -> Result<()> {
                                 app.running = false;
                             }
                             
-                            // Submit prompt (Ctrl+Enter or Ctrl+J in some environments)
-                            KeyCode::Enter if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                            // Submit prompt on Enter
+                            KeyCode::Enter => {
                                 let input_lines = textarea.lines().join("\n");
                                 let trimmed = input_lines.trim();
                                 if !trimmed.is_empty() {
                                     if trimmed == "/model" {
                                         textarea = TextArea::default();
-                                        textarea.set_placeholder_text("Ask a research query... (Ctrl+Enter to send, Esc to exit)");
+                                        textarea.set_placeholder_text("Ask a research query... (Enter to send, Esc to exit)");
                                         app.model_menu_active = true;
                                         app.model_menu_step = 0;
                                         app.selected_provider_idx = 0;
@@ -234,7 +234,7 @@ async fn main() -> Result<()> {
                                         
                                         // Reset text input
                                         textarea = TextArea::default();
-                                        textarea.set_placeholder_text("Ask a research query... (Ctrl+Enter to send, Esc to exit)");
+                                        textarea.set_placeholder_text("Ask a research query... (Enter to send, Esc to exit)");
                                         
                                         let tx = event_tx.clone();
                                         let prompt = trimmed.to_string();

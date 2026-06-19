@@ -101,8 +101,8 @@ Configure `config.toml` to specify your preferred LLM provider, target model, se
     ```bash
     cargo run --release
     ```
-    *   **Controls**: Type inside the prompt box. Press **`Ctrl+Enter`** to submit a research query. Press **`Esc`** to quit.
-    *   **Changing Models**: Type **`/model`** in the prompt box and press **`Ctrl+Enter`** to open the interactive selection overlay. Use Up/Down arrows to choose a provider and model, and Enter to select.
+    *   **Controls**: Type inside the prompt box. Press **`Enter`** to submit a research query. Press **`Esc`** to quit.
+    *   **Changing Models**: Type **`/model`** in the prompt box and press **`Enter`** to open the interactive selection overlay. Use Up/Down arrows to choose a provider and model, and Enter to select.
 *   **Configure Mode**:
     ```bash
     cargo run --release -- configure
