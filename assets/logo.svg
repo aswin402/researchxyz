@@ -1,24 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" width="100%" height="100%">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
   <defs>
-    <!-- Neon Gradients -->
-    <linearGradient id="neonCyan" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#00f3ff" />
-      <stop offset="100%" stop-color="#0066ff" />
-    </linearGradient>
-    
-    <linearGradient id="neonPurple" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#ff00cc" />
-      <stop offset="100%" stop-color="#9900ff" />
-    </linearGradient>
-
-    <linearGradient id="cyanPurple" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#00f3ff" />
-      <stop offset="50%" stop-color="#ab00ff" />
-      <stop offset="100%" stop-color="#ff00cc" />
-    </linearGradient>
-
-    <!-- Glow Filters -->
-    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+    <!-- Neon Teal Glow Filter -->
+    <filter id="neon-glow-filter" x="-30%" y="-30%" width="160%" height="160%">
       <feGaussianBlur stdDeviation="8" result="blur" />
       <feMerge>
         <feMergeNode in="blur" />
@@ -26,186 +9,135 @@
       </feMerge>
     </filter>
 
-    <filter id="glow-intense" x="-50%" y="-50%" width="200%" height="200%">
-      <feGaussianBlur stdDeviation="15" result="blur1" />
-      <feGaussianBlur stdDeviation="5" result="blur2" />
-      <feMerge>
-        <feMergeNode in="blur1" />
-        <feMergeNode in="blur2" />
-        <feMergeNode in="SourceGraphic" />
-      </feMerge>
-    </filter>
+    <!-- Subtle Background Radial Gradient -->
+    <radialGradient id="bg-grad" cx="50%" cy="40%" r="60%">
+      <stop offset="0%" stop-color="#171c28" />
+      <stop offset="100%" stop-color="#0b0e14" />
+    </radialGradient>
+
+    <!-- Linear Gradient for Text accent -->
+    <linearGradient id="teal-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#7dd3c0" />
+      <stop offset="100%" stop-color="#5fb88a" />
+    </linearGradient>
   </defs>
 
   <style>
-    /* Isometric Box Style */
-    .box-edge {
-      stroke: url(#cyanPurple);
-      stroke-width: 3.5;
-      fill: none;
-      stroke-linecap: round;
-      stroke-linejoin: round;
-      filter: url(#glow);
-      opacity: 0.9;
-    }
-    
-    .box-back {
-      stroke: url(#neonPurple);
-      stroke-dasharray: 6 6;
-      opacity: 0.4;
-      stroke-width: 2;
-    }
-    
-    /* Circuits */
-    .circuit-line {
-      fill: none;
-      stroke-width: 3;
-      stroke-linecap: round;
-      filter: url(#glow);
-      stroke-dasharray: 300;
-      stroke-dashoffset: 300;
-      animation: drawCircuit 4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-    }
-
-    .cyan-line {
-      stroke: url(#neonCyan);
-    }
-
-    .purple-line {
-      stroke: url(#neonPurple);
-    }
-    
-    /* Glowing Dots */
-    .glow-dot {
-      fill: #fff;
-      filter: url(#glow-intense);
-      opacity: 0;
-      animation: pulseDot 4s ease-in-out infinite;
-    }
-    
-    /* Particles */
-    .particle {
-      fill: #00f3ff;
-      filter: url(#glow);
-      opacity: 0;
-      animation: floatUp 5s ease-in-out infinite;
-    }
-
-    /* Keyframes */
-    @keyframes drawCircuit {
-      0% {
-        stroke-dashoffset: 300;
+    /* Neon Glow & Pulse Keyframes */
+    @keyframes neon-pulse {
+      0%, 100% {
+        opacity: 0.85;
+        filter: drop-shadow(0 0 3px #7dd3c0) drop-shadow(0 0 8px #7dd3c0);
       }
       50% {
-        stroke-dashoffset: 0;
-      }
-      100% {
-        stroke-dashoffset: -300;
+        opacity: 1.0;
+        filter: drop-shadow(0 0 6px #7dd3c0) drop-shadow(0 0 18px #7dd3c0);
       }
     }
 
-    @keyframes pulseDot {
-      0%, 100% {
-        opacity: 0;
-        transform: scale(0.3);
-      }
-      30%, 70% {
-        opacity: 1;
-        transform: scale(1.1);
-      }
+    /* Terminal Cursor Blinking */
+    @keyframes cursor-blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0; }
     }
 
-    @keyframes floatUp {
-      0% {
-        transform: translate(0, 0) scale(0.8);
-        opacity: 0;
-      }
-      20% {
-        opacity: 0.8;
-      }
-      80% {
-        opacity: 0.8;
-      }
-      100% {
-        transform: translate(var(--tx), var(--ty)) scale(0.3);
-        opacity: 0;
-      }
-    }
-    
-    /* Typography */
-    .text-title {
-      font-family: 'Outfit', 'Montserrat', 'Inter', sans-serif;
-      font-size: 76px;
-      font-weight: 800;
-      fill: url(#cyanPurple);
-      letter-spacing: 5px;
-      filter: url(#glow);
+    /* Magnifying Glass Scan Motion */
+    @keyframes lens-scan {
+      0%, 100% { transform: translate(0px, 0px); }
+      50% { transform: translate(6px, -6px); }
     }
 
-    .text-subtitle {
-      font-family: 'Inter', sans-serif;
-      font-size: 18px;
-      font-weight: 600;
-      fill: #94a3b8;
-      letter-spacing: 7px;
-      opacity: 0.8;
+    /* Code Line Typing Animation Simulated */
+    @keyframes code-type {
+      0%, 100% { stroke-dashoffset: 80; }
+      50% { stroke-dashoffset: 0; }
+    }
+
+    /* Class applications */
+    .bg {
+      fill: url(#bg-grad);
+    }
+    .neon-pulse-element {
+      animation: neon-pulse 3s infinite ease-in-out;
+    }
+    .scanner-group {
+      animation: lens-scan 5s infinite ease-in-out;
+    }
+    .cursor-blink-element {
+      animation: cursor-blink 1s infinite steps(1);
+    }
+    .typing-line-1 {
+      stroke-dasharray: 80;
+      stroke-dashoffset: 80;
+      animation: code-type 4s infinite ease-in-out;
+    }
+    .typing-line-2 {
+      stroke-dasharray: 80;
+      stroke-dashoffset: 80;
+      animation: code-type 4s infinite ease-in-out;
+      animation-delay: 1s;
     }
   </style>
 
-  <g transform="translate(400, 360)">
-    <!-- Circuit Lines (Emerging from the Box) -->
-    <!-- Center Left -->
-    <path class="circuit-line cyan-line" d="M 0, -5 L -40, -65 L -120, -65 L -150, -115" style="animation-delay: 0s;" />
-    <!-- Center Right -->
-    <path class="circuit-line purple-line" d="M 0, -5 L 40, -65 L 120, -65 L 150, -115" style="animation-delay: 0.5s;" />
-    <!-- Mid Left Up -->
-    <path class="circuit-line purple-line" d="M -20, 15 L -80, -45 L -80, -125 L -130, -175" style="animation-delay: 1s;" />
-    <!-- Mid Right Up -->
-    <path class="circuit-line cyan-line" d="M 20, 15 L 80, -45 L 80, -125 L 130, -175" style="animation-delay: 1.5s;" />
-    <!-- Center Straight Up -->
-    <path class="circuit-line cyan-line" d="M 0, -10 L 0, -155 L -30, -205" style="animation-delay: 0.8s;" />
-    <path class="circuit-line purple-line" d="M 0, -10 L 0, -125 L 30, -175" style="animation-delay: 1.2s;" />
+  <!-- Background -->
+  <rect width="100%" height="100%" class="bg" rx="24" />
 
-    <!-- Glowing Dots at endpoints -->
-    <circle class="glow-dot" cx="-150" cy="-115" r="6" style="animation-delay: 2.0s; fill: #00f3ff;" />
-    <circle class="glow-dot" cx="150" cy="-115" r="6" style="animation-delay: 2.5s; fill: #ff00cc;" />
-    <circle class="glow-dot" cx="-130" cy="-175" r="6" style="animation-delay: 3.0s; fill: #ff00cc;" />
-    <circle class="glow-dot" cx="130" cy="-175" r="6" style="animation-delay: 3.5s; fill: #00f3ff;" />
-    <circle class="glow-dot" cx="-30" cy="-205" r="5" style="animation-delay: 2.8s; fill: #00f3ff;" />
-    <circle class="glow-dot" cx="30" cy="-175" r="5" style="animation-delay: 3.2s; fill: #ff00cc;" />
-
-    <!-- Floating Particles -->
-    <circle class="particle" cx="-20" cy="-50" r="3.5" style="--tx: -60px; --ty: -150px; animation-delay: 0s;" />
-    <circle class="particle" cx="30" cy="-30" r="2.5" style="--tx: 90px; --ty: -180px; animation-delay: 1.2s; fill: #ff00cc;" />
-    <circle class="particle" cx="-10" cy="-70" r="3" style="--tx: -40px; --ty: -200px; animation-delay: 2.4s;" />
-    <circle class="particle" cx="15" cy="-60" r="3.5" style="--tx: 50px; --ty: -130px; animation-delay: 3.6s; fill: #ff00cc;" />
-
-    <!-- Isometric Box (Package) -->
-    <!-- Back wireframe (inside the box) -->
-    <path class="box-edge box-back" d="M 0, -30 L 0, 60 M -90, 110 L 0, 60 L 90, 110" />
+  <!-- Logo Graphics Group -->
+  <g transform="translate(0, -10)">
     
-    <!-- Front Face Left -->
-    <path class="box-edge" d="M -90, 20 L -90, 110 L 0, 160 M 0, 160 L 0, 70" />
-    <!-- Front Face Right -->
-    <path class="box-edge" d="M 90, 20 L 90, 110 L 0, 160" />
-    <!-- Top Rim (Opening) -->
-    <path class="box-edge" d="M -90, 20 L 0, 70 L 90, 20 L 0, -30 Z" />
+    <!-- Stack of Books (Background Elements) -->
+    <g stroke="#262a36" stroke-width="4" fill="none" opacity="0.6" transform="translate(0, 10)">
+      <!-- Book 1 (Top) -->
+      <path d="M 170 140 h 160 a 8 8 0 0 1 8 8 v 12 a 8 8 0 0 1 -8 8 h -160 a 8 8 0 0 1 -8 -8 v -12 a 8 8 0 0 1 8 -8 z" />
+      <line x1="185" y1="140" x2="185" y2="168" />
+      
+      <!-- Book 2 (Middle) -->
+      <path d="M 170 178 h 160 a 8 8 0 0 1 8 8 v 12 a 8 8 0 0 1 -8 8 h -160 a 8 8 0 0 1 -8 -8 v -12 a 8 8 0 0 1 8 -8 z" />
+      <line x1="185" y1="178" x2="185" y2="206" />
 
-    <!-- Left-Back Flap -->
-    <path class="box-edge" d="M -90, 20 L -140, -10 L -50, -60 L 0, -30" />
-    <!-- Right-Back Flap -->
-    <path class="box-edge" d="M 90, 20 L 140, -10 L 50, -60 L 0, -30" />
-    <!-- Front-Left Flap -->
-    <path class="box-edge" d="M -90, 20 L -140, 50 L -50, 100 L 0, 70" />
-    <!-- Front-Right Flap -->
-    <path class="box-edge" d="M 90, 20 L 140, 50 L 50, 100 L 0, 70" />
+      <!-- Book 3 (Bottom) -->
+      <path d="M 170 216 h 160 a 8 8 0 0 1 8 8 v 12 a 8 8 0 0 1 -8 8 h -160 a 8 8 0 0 1 -8 -8 v -12 a 8 8 0 0 1 8 -8 z" />
+      <line x1="185" y1="216" x2="185" y2="244" />
+    </g>
+
+    <!-- Scanner / Magnifying Glass Group (Animated Float) -->
+    <g class="scanner-group">
+      <!-- Outer Glass Lens (Teal Neon) -->
+      <circle cx="260" cy="200" r="76" stroke="#7dd3c0" stroke-width="7" fill="#11141c" fill-opacity="0.85" filter="url(#neon-glow-filter)" class="neon-pulse-element" />
+      
+      <!-- Handle (Diagonal) -->
+      <line x1="314" y1="254" x2="370" y2="310" stroke="#7dd3c0" stroke-width="12" stroke-linecap="round" filter="url(#neon-glow-filter)" class="neon-pulse-element" />
+      
+      <!-- Inner Terminal Code Lines inside the lens -->
+      <g stroke="#7dd3c0" stroke-width="4" stroke-linecap="round" fill="none" opacity="0.9">
+        <!-- Terminal prompt prompt '>' -->
+        <path d="M 215 178 l 6 4 l -6 4" stroke-width="3" />
+        
+        <!-- Code line 1 -->
+        <line x1="229" y1="182" x2="295" y2="182" class="typing-line-1" />
+        
+        <!-- Code line 2 -->
+        <line x1="215" y1="200" x2="280" y2="200" class="typing-line-2" />
+        
+        <!-- Prompt 2 '>' -->
+        <path d="M 215 218 l 6 4 l -6 4" stroke-width="3" />
+        
+        <!-- Cursor line block '_' -->
+        <line x1="228" y1="222" x2="238" y2="222" stroke-width="5" class="cursor-blink-element" />
+      </g>
+    </g>
   </g>
 
-  <!-- Text Branding -->
-  <g transform="translate(400, 610)" text-anchor="middle">
-    <!-- Stylized "onpkg" text -->
-    <text class="text-title" x="0" y="0">onpkg</text>
-    <!-- Subtitle -->
-    <text class="text-subtitle" x="0" y="45">AI AGENT PACKAGE MANAGER</text>
+  <!-- Typography Section -->
+  <g text-anchor="middle" font-family="system-ui, -apple-system, sans-serif">
+    <!-- Brand Title -->
+    <text x="256" y="398" font-size="44" font-weight="800" fill="#d4d4d6" letter-spacing="1">
+      research<tspan fill="url(#teal-grad)">xyz</tspan>
+    </text>
+    
+    <!-- Subtitle / Tagline -->
+    <text x="256" y="432" font-size="12" font-weight="600" fill="#6b7280" letter-spacing="4">
+      TERMINAL-NATIVE AI RESEARCH AGENT
+    </text>
   </g>
 </svg>

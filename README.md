@@ -1,6 +1,6 @@
 # ResearchXYZ 🚀
 
-![ResearchXYZ Logo](assets/logo.jpg)
+![ResearchXYZ Logo](assets/logo.svg)
 
 `researchxyz` is a high-performance, terminal-native AI research agent written entirely in Rust. 
 
