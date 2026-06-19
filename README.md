@@ -19,6 +19,7 @@ Its sole purpose is to conduct deep, thorough research: finding relevant sources
 *   **Multi-Backend Search & Scraping (`web_search` / `web_fetch`)**: Attempts high-fidelity endpoints (Websurfx, Tavily, Exa) and falls back to keyless DuckDuckGo/Mojeek HTML scrapers. Walks DOM nodes natively via `scraper` and `ego-tree` to extract clean text.
 *   **Rich Document Parser (`read_doc`)**: Programmatically extracts text from local files (PDFs via `pdf-extract`, Word DOCX files via `docx-rs`, and Excel spreadsheets via `calamine`).
 *   **Structured Citations**: Feeds strict citation reference mappings into LLM context, automatically compiling inline source footnotes and bibliographies.
+*   **Local Persistent Memory Database**: Implements a lightweight, native, and zero-dependency memory store (`memory_search` / `memory_store`) caching previously synthesized facts, paper abstracts, and sources locally, ranking findings using keyword overlap scoring.
 *   **Model Context Protocol (MCP)**: Features built-in stdio client integrations using `rmcp` to plug in external tool servers (such as presentation builders).
 
 ---
@@ -49,7 +50,8 @@ researchxyz/
 │   ├── core/                  # Reasoning structures
 │   │   ├── agent.rs           # Anthropic API ReAct execution loop
 │   │   ├── registry.rs        # Tool trait & registry
-│   │   └── types.rs           # Channel & event types
+│   │   ├── types.rs           # Channel & event types
+│   │   └── memory.rs          # Local memory storage manager
 │   ├── tui/                   # Visual engine
 │   │   ├── draw.rs            # Ratatui panel drawers
 │   │   └── theme.rs           # Antigravity color theme
@@ -57,7 +59,8 @@ researchxyz/
 │   │   ├── web.rs             # Search & scraping clients
 │   │   ├── docreader.rs       # PDF, Word, Excel parsers
 │   │   ├── docgen.rs          # PDF/Word/PPTX compilers
-│   │   └── academic.rs        # Academic databases query
+│   │   ├── academic.rs        # Academic databases query
+│   │   └── memory.rs          # Memory search and store tools
 │   └── mcp/                   # MCP client connections
 │       └── client.rs          # rmcp transport wrapper
 └── workspace/                 # Local directory for generated documents

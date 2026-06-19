@@ -66,3 +66,33 @@ To ensure PDF documents compile successfully, make sure at least one of these fo
 sudo apt-get install fonts-freefont-ttf fonts-dejavu fonts-liberation
 ```
 If no fonts are found, the PDF creation tool will return an upstream compilation error explaining that no standard TrueType fonts could be loaded.
+
+---
+
+## 4. Local Persistent Memory 🧠
+
+ResearchXYZ automatically caches synthesized research facts, abstracts, takeaways, and sources in a local database located at:
+```bash
+~/.config/researchxyz/memory.json
+```
+
+This file is a flat JSON array of memory entries structured as follows:
+
+```json
+[
+  {
+    "id": "1718816823456_rust",
+    "timestamp": "2026-06-19T14:00:00Z",
+    "query": "Rust memory safety guarantees",
+    "summary": "Rust guarantees memory safety at compile-time using ownership rules, lifetimes, and borrow checker. It prevents data races, double frees, and dangling pointers without a garbage collector...",
+    "keywords": ["rust", "memory safety", "borrow checker"],
+    "sources": ["https://doc.rust-lang.org/book/ch04-00-understanding-ownership.html"]
+  }
+]
+```
+
+### Memory Retrieval and Storage
+The agent uses the following guidelines automatically during a research loop:
+1. **Query Overlap Search**: When a new query is submitted, the agent runs the `memory_search` tool first. It parses keywords from the query and performs a case-insensitive overlap scan on stored queries, keywords, and summaries to return matching records.
+2. **Auto-Saving Takeaways**: Upon completing a research run, the agent invokes `memory_store` to record its synthesised answers, key keywords, and URLs referenced, making this context available to future sessions.
+

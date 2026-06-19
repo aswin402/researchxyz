@@ -129,6 +129,39 @@ pub struct Theme {
 }
 ```
 
+### `memory_search`
+```json
+{
+  "type": "object",
+  "properties": {
+    "query": { "type": "string" },
+    "max_results": { "type": "integer", "default": 5 }
+  },
+  "required": ["query"]
+}
+```
+
+### `memory_store`
+```json
+{
+  "type": "object",
+  "properties": {
+    "query": { "type": "string" },
+    "summary": { "type": "string" },
+    "keywords": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "sources": {
+      "type": "array",
+      "items": { "type": "string" },
+      "default": []
+    }
+  },
+  "required": ["query", "summary", "keywords"]
+}
+```
+
 ### `create_docx` / `create_pdf` / `create_pptx`
 ```json
 {

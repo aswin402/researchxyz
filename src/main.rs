@@ -123,6 +123,8 @@ async fn main() -> Result<()> {
     registry.register(std::sync::Arc::new(crate::tools::CreatePdfTool));
     registry.register(std::sync::Arc::new(crate::tools::CreatePptxTool));
     registry.register(std::sync::Arc::new(crate::tools::DocReaderTool));
+    registry.register(std::sync::Arc::new(crate::tools::MemorySearchTool));
+    registry.register(std::sync::Arc::new(crate::tools::MemoryStoreTool));
     let registry = std::sync::Arc::new(registry);
     
     let mut history: Vec<crate::core::types::Message> = Vec::new();

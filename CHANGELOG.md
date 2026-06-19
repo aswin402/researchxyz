@@ -7,6 +7,10 @@ All notable changes to the **ResearchXYZ** project will be documented in this fi
 ## [v0.0.1] - 2026-06-19
 
 ### Added
+- **Local Persistent Memory Database (`memory_search`, `memory_store`)**:
+  - Implemented lightweight flat-file JSON local database (`memory.json`) mapping queries to synthesized summaries, keyword tags, and source links.
+  - Implemented automatic query keyword overlap scoring algorithm for sub-millisecond local context queries.
+  - Wired LLM clients (Anthropic and OpenAI/compatible) system prompts to execute `memory_search` queries initially and call `memory_store` on completion.
 - **Interactive Configuration Wizard (`researchxyz configure`)**:
   - Implemented interactive CLI setup using the `inquire` library.
   - Allows selecting LLM provider (Anthropic, OpenAI, DeepSeek, Groq, OpenRouter, Google AI Studio, or Auto).
