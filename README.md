@@ -1,5 +1,7 @@
 # ResearchXYZ 🚀
 
+![ResearchXYZ Logo](assets/logo.jpg)
+
 `researchxyz` is a high-performance, terminal-native AI research agent written entirely in Rust. 
 
 Its sole purpose is to conduct deep, thorough research: finding relevant sources, reading webpages, parsing documents (PDF, Word, Excel), synthesizing findings, and producing formatted deliverables (.pdf, .docx, and .pptx slides) in a single keyboard-driven session.
