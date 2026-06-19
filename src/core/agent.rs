@@ -126,7 +126,7 @@ impl LlmClient for AnthropicClient {
                         ContentBlock::Text(text) => {
                             content.push(AnthropicContent::Text { text: text.clone() });
                         }
-                        ContentBlock::ToolUse { id, name, input } => {
+                        ContentBlock::ToolUse { id, name, input, .. } => {
                             content.push(AnthropicContent::ToolUse {
                                 id: id.clone(),
                                 name: name.clone(),
@@ -201,7 +201,7 @@ impl LlmClient for AnthropicClient {
                         let input = block["input"].clone();
                         
                         tool_calls.push((id.clone(), name.clone(), input.clone()));
-                        assistant_content.push(ContentBlock::ToolUse { id, name, input });
+                        assistant_content.push(ContentBlock::ToolUse { id, name, input, extra_content: None });
                     }
                 }
             }
@@ -432,15 +432,19 @@ impl LlmClient for OpenAiClient {
                                 ContentBlock::Text(t) => {
                                     text.push_str(t);
                                 }
-                                ContentBlock::ToolUse { id, name, input } => {
-                                    tool_calls.push(serde_json::json!({
+                                ContentBlock::ToolUse { id, name, input, extra_content } => {
+                                    let mut tc_val = serde_json::json!({
                                         "id": id.clone(),
                                         "type": "function",
                                         "function": {
                                             "name": name.clone(),
                                             "arguments": input.to_string()
                                         }
-                                    }));
+                                    });
+                                    if let Some(extra) = extra_content {
+                                        tc_val["extra_content"] = extra.clone();
+                                    }
+                                    tool_calls.push(tc_val);
                                 }
                                 _ => {}
                             }
@@ -534,11 +538,13 @@ impl LlmClient for OpenAiClient {
                                 if let (Some(id), Some(name)) = (tc["id"].as_str(), tc["function"]["name"].as_str()) {
                                     let args_str = tc["function"]["arguments"].as_str().unwrap_or("{}");
                                     let input: serde_json::Value = serde_json::from_str(args_str).unwrap_or(serde_json::Value::Null);
+                                    let extra_content = tc.get("extra_content").cloned();
                                     tool_calls.push((id.to_string(), name.to_string(), input.clone()));
                                     assistant_content.push(ContentBlock::ToolUse {
                                         id: id.to_string(),
                                         name: name.to_string(),
                                         input,
+                                        extra_content,
                                     });
                                 }
                             }

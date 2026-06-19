@@ -75,6 +75,21 @@ mod tracing_appender {
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    // Load .env file manually if it exists for local development environment setup
+    if let Ok(content) = fs::read_to_string(".env") {
+        for line in content.lines() {
+            let line = line.trim();
+            if line.is_empty() || line.starts_with('#') {
+                continue;
+            }
+            if let Some((key, val)) = line.split_once('=') {
+                let key = key.trim();
+                let val = val.trim().trim_matches('"').trim_matches('\'');
+                std::env::set_var(key, val);
+            }
+        }
+    }
+
     let args: Vec<String> = std::env::args().collect();
     if args.contains(&"--version".to_string()) || args.contains(&"-v".to_string()) {
         println!("researchxyz v0.0.1");
@@ -83,6 +98,86 @@ async fn main() -> Result<()> {
 
     if args.contains(&"configure".to_string()) {
         crate::config::run_configure_wizard()?;
+        return Ok(());
+    }
+
+    if args.contains(&"--test-agent".to_string()) {
+        println!("=============================================");
+        println!("     ResearchXYZ Agent Integration Test      ");
+        println!("=============================================\n");
+        
+        let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
+        let config_path = PathBuf::from(home).join(".config/researchxyz/config.toml");
+        let config = if config_path.exists() {
+            Config::load_from_path(&config_path).unwrap_or_else(|_| Config::default_config())
+        } else {
+            Config::default_config()
+        };
+        
+        println!("Loaded config from: {}", config_path.display());
+        println!("Provider: {}", config.llm.provider);
+        println!("Model: {}", config.llm.model);
+        
+        // Resolve client
+        let client = crate::core::agent::resolve_client(&config)?;
+        
+        // Setup registry
+        let mut registry = crate::core::registry::ToolRegistry::new();
+        registry.register(std::sync::Arc::new(crate::tools::WebSearchTool::new()));
+        registry.register(std::sync::Arc::new(crate::tools::WebFetchTool::new()));
+        registry.register(std::sync::Arc::new(crate::tools::AcademicSearchTool));
+        registry.register(std::sync::Arc::new(crate::tools::CreateDocxTool));
+        registry.register(std::sync::Arc::new(crate::tools::CreatePdfTool));
+        registry.register(std::sync::Arc::new(crate::tools::CreatePptxTool));
+        registry.register(std::sync::Arc::new(crate::tools::DocReaderTool));
+        registry.register(std::sync::Arc::new(crate::tools::MemorySearchTool));
+        registry.register(std::sync::Arc::new(crate::tools::MemoryStoreTool));
+        let registry = std::sync::Arc::new(registry);
+        
+        // History
+        let prompt = "Please search persistent memory for the word 'rust'. Then, store a new entry in persistent memory with query 'rust memory testing', summary 'Google AI Studio successfully configured and tested local memory tools.', and keywords ['rust', 'memory', 'test']. Finally, summarize what you did.";
+        let history = vec![crate::core::types::Message {
+            role: crate::core::types::Role::User,
+            content: vec![crate::core::types::ContentBlock::Text(prompt.to_string())],
+        }];
+        
+        let (event_tx, mut event_rx) = mpsc::channel::<AgentEvent>(100);
+        
+        // Spawn receiver task to print events in real-time
+        let rx_handle = tokio::spawn(async move {
+            use std::io::Write;
+            while let Some(event) = event_rx.recv().await {
+                match event {
+                    AgentEvent::TextDelta(text) => {
+                        print!("{}", text);
+                        let _ = std::io::stdout().flush();
+                    }
+                    AgentEvent::ToolCallStarted { id: _, name, input } => {
+                        println!("\n[Tool Started: {} with input: {}]", name, input);
+                    }
+                    AgentEvent::ToolCallFinished { id: _, name, result } => {
+                        match result {
+                            Ok(res) => println!("\n[Tool Finished: {} with success ({} bytes)]", name, res.content.len()),
+                            Err(err) => println!("\n[Tool Finished: {} with error: {:?}]", name, err),
+                        }
+                    }
+                    AgentEvent::FileWritten { path, kind } => {
+                        println!("\n[File Written: {:?} ({:?})]", path, kind);
+                    }
+                    AgentEvent::TurnComplete => {
+                        println!("\n[Turn Complete]");
+                    }
+                }
+            }
+        });
+        
+        println!("Running agent turn...\n");
+        let _ = crate::core::agent::run_turn(&history, client, registry, event_tx).await?;
+        let _ = rx_handle.await;
+        
+        println!("\n=============================================");
+        println!("     Test Completed Successfully             ");
+        println!("=============================================\n");
         return Ok(());
     }
 

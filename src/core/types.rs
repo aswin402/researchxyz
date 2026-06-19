@@ -21,6 +21,8 @@ pub enum ContentBlock {
         id: String,
         name: String,
         input: serde_json::Value,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        extra_content: Option<serde_json::Value>,
     },
     ToolResult {
         tool_use_id: String,
