@@ -31,6 +31,9 @@ researchxyz/
 ├── README.md                  # Project overview
 ├── config/
 │   └── researchxyz.example.toml # Sample config.toml
+├── docs/                      # User manuals & documentation guides
+│   ├── config_guide.md        # Detailed configuration parameters manual
+│   └── tui_manual.md          # User guidelines for navigating the TUI
 ├── onpkg.json                 # AI agent project metadata
 ├── onpkg_docs/                # AI agent specification documents
 │   ├── prd.md                 # Product Requirements Document
@@ -59,6 +62,14 @@ researchxyz/
 │       └── client.rs          # rmcp transport wrapper
 └── workspace/                 # Local directory for generated documents
 ```
+
+---
+
+## 📖 User Documentation
+
+For detailed guides, see:
+*   [Configuration Guide](docs/config_guide.md) — How to set up keys, search engines, and MCP servers.
+*   [TUI Manual](docs/tui_manual.md) — Controls, keyboard bindings, panel structures, and status indicators.
 
 ---
 
