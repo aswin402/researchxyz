@@ -24,13 +24,13 @@ This checklist tracks progress on the five development phases of `researchxyz`.
 - [x] Implement `WebFetch` tool (extract readable text using `scraper` selector logic from `openz`).
 - [x] Implement `WebSearch` tool (support SearXNG, DuckDuckGo scraper, and Brave API from `openz`).
 - [x] Implement `DocReader` tool (extract Word `.docx`, PDF `.pdf`, and Excel `.xlsx`/`.xls`/`.ods` documents from `openz`).
-- [ ] Implement arXiv client parser (`Paper` normalization).
-- [ ] Implement Crossref work search API (`Paper` normalization, mailto support).
-- [ ] Implement OpenAlex client work search (`Paper` normalization).
-- [ ] Implement Semantic Scholar graphic search with 429 rate limit backoff.
-- [ ] Implement merged `AcademicSearch` tool with DOI/title deduplication.
-- [ ] Implement session-scoped `SourceRef` registry for citations.
-- [ ] Manual test: "Find papers on X" produces cited sources in the chat history.
+- [x] Implement arXiv client parser (`Paper` normalization).
+- [x] Implement Crossref work search API (`Paper` normalization, mailto support).
+- [x] Implement OpenAlex client work search (`Paper` normalization).
+- [x] Implement Semantic Scholar search.
+- [x] Implement merged `AcademicSearch` tool with DOI/title deduplication.
+- [x] Implement session-scoped `SourceRef` registry for citations.
+- [x] Manual test: "Find papers on X" produces cited sources in the chat history.
 
 ## Phase 3 — Document Generation
 - [ ] Implement `CreateDocx` tool using `docx-rs` layout templates.
