@@ -23,7 +23,8 @@
   </defs>
 
   <style>
-    /* Neon Glow & Pulse Keyframes */
+    <![CDATA[
+    /* Neon Glow and Pulse Keyframes */
     @keyframes neon-pulse {
       0%, 100% {
         opacity: 0.85;
@@ -77,6 +78,7 @@
       animation: code-type 4s infinite ease-in-out;
       animation-delay: 1s;
     }
+    ]]>
   </style>
 
   <!-- Background -->
