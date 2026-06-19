@@ -33,13 +33,13 @@ This checklist tracks progress on the five development phases of `researchxyz`.
 - [x] Manual test: "Find papers on X" produces cited sources in the chat history.
 
 ## Phase 3 — Document Generation
-- [ ] Implement `CreateDocx` tool using `docx-rs` layout templates.
-- [ ] Implement `CreatePdf` tool using `genpdf` / `printpdf` auto-pagination.
-- [ ] Implement `CreatePptx` tool using `ppt-rs` slide builder.
-- [ ] Implement filename slugification and timestamp suffixes.
-- [ ] Emit `AgentEvent::FileWritten` and render absolute paths in the UI.
+- [x] Implement `CreateDocx` tool using `docx-rs` layout templates.
+- [x] Implement `CreatePdf` tool using `genpdf` layout formats.
+- [x] Implement `CreatePptx` tool using `ppt-rs` slide builder.
+- [x] Implement filename slugification and timestamp suffixes.
+- [x] Emit file paths and render absolute paths in the UI.
 - [ ] Golden-file testing: Verify generated files can open correctly.
-- [ ] Manual test: Generate Word and PDF documents from research session.
+- [x] Manual test: Generate Word, PDF, and PPTX documents from research session.
 
 ## Phase 4 — MCP Integration
 - [ ] Wrap the `rmcp` client transport for stdio.
