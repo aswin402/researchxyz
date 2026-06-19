@@ -92,7 +92,7 @@ async fn main() -> Result<()> {
 
     let args: Vec<String> = std::env::args().collect();
     if args.contains(&"--version".to_string()) || args.contains(&"-v".to_string()) {
-        println!("researchxyz v0.0.1");
+        println!("researchxyz v{}", env!("CARGO_PKG_VERSION"));
         return Ok(());
     }
 

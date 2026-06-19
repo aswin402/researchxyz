@@ -151,7 +151,7 @@ async fn search_arxiv(client: &reqwest::Client, query: &str, max_results: usize)
     let url = format!("http://export.arxiv.org/api/query?search_query=all:{}&max_results={}", encoded_query, max_results);
     let mut results = Vec::new();
 
-    if let Ok(resp) = client.get(&url).header("User-Agent", "ResearchXYZ/0.1.0").send().await {
+    if let Ok(resp) = client.get(&url).header("User-Agent", concat!("ResearchXYZ/", env!("CARGO_PKG_VERSION"))).send().await {
         if let Ok(xml_text) = resp.text().await {
             let entry_re = regex::Regex::new(r"(?s)<entry>(.*?)</entry>").unwrap();
             let title_re = regex::Regex::new(r"(?s)<title>(.*?)</title>").unwrap();
@@ -191,7 +191,7 @@ async fn search_crossref(client: &reqwest::Client, query: &str, mailto: Option<&
     }
 
     let mut results = Vec::new();
-    if let Ok(resp) = client.get(&url).header("User-Agent", "ResearchXYZ/0.1.0").send().await {
+    if let Ok(resp) = client.get(&url).header("User-Agent", concat!("ResearchXYZ/", env!("CARGO_PKG_VERSION"))).send().await {
         if let Ok(json) = resp.json::<serde_json::Value>().await {
             if let Some(items) = json["message"]["items"].as_array() {
                 for item in items {
@@ -222,7 +222,7 @@ async fn search_openalex(client: &reqwest::Client, query: &str, max_results: usi
     let url = format!("https://api.openalex.org/works?search={}&per-page={}", encoded_query, max_results);
     let mut results = Vec::new();
 
-    if let Ok(resp) = client.get(&url).header("User-Agent", "ResearchXYZ/0.1.0").send().await {
+    if let Ok(resp) = client.get(&url).header("User-Agent", concat!("ResearchXYZ/", env!("CARGO_PKG_VERSION"))).send().await {
         if let Ok(json) = resp.json::<serde_json::Value>().await {
             if let Some(results_array) = json["results"].as_array() {
                 for item in results_array {
@@ -248,7 +248,7 @@ async fn search_semantic_scholar(client: &reqwest::Client, query: &str, max_resu
     let url = format!("https://api.semanticscholar.org/graph/v1/paper/search?query={}&limit={}", encoded_query, max_results);
     let mut results = Vec::new();
 
-    if let Ok(resp) = client.get(&url).header("User-Agent", "ResearchXYZ/0.1.0").send().await {
+    if let Ok(resp) = client.get(&url).header("User-Agent", concat!("ResearchXYZ/", env!("CARGO_PKG_VERSION"))).send().await {
         if let Ok(json) = resp.json::<serde_json::Value>().await {
             if let Some(data) = json["data"].as_array() {
                 for item in data {

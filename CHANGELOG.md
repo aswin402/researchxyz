@@ -4,6 +4,21 @@ All notable changes to the **ResearchXYZ** project will be documented in this fi
 
 ---
 
+## [v0.1.1] - 2026-06-20
+
+### Added
+- **Local Development Environment (`.env` Integration)**:
+  - Added support for loading environment variables from a local `.env` file automatically on application startup.
+- **Headless Agent Testing Mode (`--test-agent`)**:
+  - Implemented command-line interface argument support to run non-interactive agent queries.
+  - Supports passing custom prompts directly from the CLI.
+- **Thought Signature Propagation (Google AI Studio Compatibility)**:
+  - Added parser and serializer mappings to capture and propagate internal reasoning `thought_signatures` for multi-turn Gemini compatibility.
+- **Unit and Integration Tests**:
+  - Added document generation unit tests verifying standard layouts for DOCX, PDF, and PPTX reports.
+
+---
+
 ## [v0.0.1] - 2026-06-19
 
 ### Added
