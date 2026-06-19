@@ -1,6 +1,8 @@
 # ResearchXYZ 🚀
 
-![ResearchXYZ Logo](assets/logo.svg)
+<p align="center">
+  <img src="assets/logo.svg" alt="ResearchXYZ Logo" width="320" />
+</p>
 
 `researchxyz` is a high-performance, terminal-native AI research agent written entirely in Rust. 
 
