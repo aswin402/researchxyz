@@ -19,6 +19,16 @@ All notable changes to the **ResearchXYZ** project will be documented in this fi
     - `Enter` key to select/confirm the active option and advance steps.
     - `Esc` key to cancel selection and close the menu.
   - Dynamically updates active `llm.provider` and `llm.model` configurations in-memory and saves them to the disk configuration file for immediate, persistent application.
+- **Native Document Compilers (`create_docx`, `create_pdf`, `create_pptx`)**:
+  - Replaced stubs with production-ready Rust compilers inside `src/tools/docgen.rs`.
+  - Implemented `.docx` formatting templates via `docx-rs`.
+  - Implemented `.pdf` compilation layout engines via `genpdf` with robust Linux font fallback sequences.
+  - Implemented presentation slides generation via `ppt-rs`.
+  - Integrated dynamic filename slugification, timestamp suffixing, and automatic directory creation based on `config.toml` output properties.
+- **Academic Search Engine (`academic_search`)**:
+  - Replaced mock stubs with live REST API query logic in `src/tools/academic.rs`.
+  - Implemented clients for **arXiv** (XML regex parser feed), **CrossRef** (JSON search), **OpenAlex** (JSON works API), and **Semantic Scholar** (Academic Graph search).
+  - Merged and deduplicated responses by DOI/Title, dynamically indexing citation mappings from `1`.
 - **TUI Modal Draw Engine**:
   - Added `centered_rect` calculations and `Clear` block layout drawing inside `src/tui/draw.rs` to render visual menu overlays on top of the main panels.
   - Styled with the custom Antigravity Teal accent palette.
