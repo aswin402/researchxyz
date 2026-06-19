@@ -179,25 +179,24 @@ async fn main() -> Result<()> {
                                 
                                 let history_clone = history.clone();
                                 let registry_clone = registry.clone();
-                                let api_key = std::env::var(&config.llm.api_key_env).unwrap_or_default();
-                                let model = config.llm.model.clone();
+                                let config_clone = config.clone();
                                 
                                 tokio::spawn(async move {
-                                    if !api_key.trim().is_empty() {
-                                        let client = crate::core::agent::AnthropicClient::new(api_key, model);
-                                        let client = std::sync::Arc::new(client);
-                                        match crate::core::agent::run_turn(&history_clone, client, registry_clone, tx.clone()).await {
-                                            Ok(_updated_history) => {
-                                                // Turn completed successfully
-                                            }
-                                            Err(e) => {
-                                                let _ = tx.send(AgentEvent::TextDelta(format!("\nError running turn: {}\n", e))).await;
-                                                let _ = tx.send(AgentEvent::TurnComplete).await;
+                                    match crate::core::agent::resolve_client(&config_clone) {
+                                        Ok(client) => {
+                                            match crate::core::agent::run_turn(&history_clone, client, registry_clone, tx.clone()).await {
+                                                Ok(_updated_history) => {
+                                                    // Turn completed successfully
+                                                }
+                                                Err(e) => {
+                                                    let _ = tx.send(AgentEvent::TextDelta(format!("\nError running turn: {}\n", e))).await;
+                                                    let _ = tx.send(AgentEvent::TurnComplete).await;
+                                                }
                                             }
                                         }
-                                    } else {
-                                        // Run simulation mode
-                                        let _ = tx.send(AgentEvent::TextDelta("Warning: Anthropic API Key not set. Running in simulation mode...\n".to_string())).await;
+                                        Err(err) => {
+                                            // Run simulation mode
+                                            let _ = tx.send(AgentEvent::TextDelta(format!("Warning: Client resolution failed: {}. Running in simulation mode...\n", err))).await;
                                         tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
                                         let _ = tx.send(AgentEvent::TextDelta(format!("Beginning simulated literature scan on: {}\n", prompt))).await;
                                         tokio::time::sleep(tokio::time::Duration::from_millis(800)).await;
@@ -257,7 +256,8 @@ async fn main() -> Result<()> {
                                         tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
                                         let _ = tx.send(AgentEvent::TurnComplete).await;
                                     }
-                                });
+                                }
+                            });
                             }
                         }
                         

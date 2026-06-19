@@ -261,3 +261,330 @@ pub async fn run_turn(
 ) -> Result<Vec<Message>, anyhow::Error> {
     client.send_message(messages, &registry, &event_tx).await
 }
+
+pub fn resolve_client(config: &crate::config::Config) -> Result<Arc<dyn LlmClient>, anyhow::Error> {
+    let mut provider = config.llm.provider.to_lowercase();
+    let mut model = config.llm.model.clone();
+    
+    // Parse model prefix to resolve provider if explicitly prefixed (e.g. openai/gpt-4o)
+    let model_lower = model.to_lowercase();
+    if model_lower.starts_with("openai/") {
+        provider = "openai".to_string();
+        model = model["openai/".len()..].to_string();
+    } else if model_lower.starts_with("anthropic/") {
+        provider = "anthropic".to_string();
+        model = model["anthropic/".len()..].to_string();
+    } else if model_lower.starts_with("deepseek/") {
+        provider = "deepseek".to_string();
+        model = model["deepseek/".len()..].to_string();
+    } else if model_lower.starts_with("groq/") {
+        provider = "groq".to_string();
+        model = model["groq/".len()..].to_string();
+    } else if model_lower.starts_with("openrouter/") {
+        provider = "openrouter".to_string();
+        model = model["openrouter/".len()..].to_string();
+    } else if model_lower.starts_with("google_ai_studio/") || model_lower.starts_with("google-ai-studio/") {
+        provider = "google_ai_studio".to_string();
+        let prefix_len = if model_lower.starts_with("google_ai_studio/") { "google_ai_studio/".len() } else { "google-ai-studio/".len() };
+        model = model[prefix_len..].to_string();
+    } else if provider == "auto" {
+        if model_lower.contains("claude") {
+            provider = "anthropic".to_string();
+        } else {
+            provider = "openai".to_string();
+        }
+    }
+
+    // Resolve API Key
+    let api_key = std::env::var(&config.llm.api_key_env)
+        .or_else(|_| std::env::var("RESEARCHXYZ_API_KEY"))
+        .or_else(|_| {
+            match provider.as_str() {
+                "anthropic" => std::env::var("ANTHROPIC_API_KEY"),
+                "openai" => std::env::var("OPENAI_API_KEY"),
+                "deepseek" => std::env::var("DEEPSEEK_API_KEY"),
+                "groq" => std::env::var("GROQ_API_KEY"),
+                "openrouter" => std::env::var("OPENROUTER_API_KEY"),
+                "google_ai_studio" => std::env::var("GOOGLE_AI_STUDIO_API_KEY"),
+                _ => std::env::var("OPENAI_API_KEY"),
+            }
+        })
+        .unwrap_or_default();
+
+    if api_key.trim().is_empty() {
+        return Err(anyhow::anyhow!(
+            "No API key found for provider '{}'. Please set the environment variable '{}' or appropriate fallback key.",
+            provider,
+            config.llm.api_key_env
+        ));
+    }
+
+    // Resolve Base URL
+    let api_base = if let Some(base) = &config.llm.api_base {
+        base.clone()
+    } else {
+        match provider.as_str() {
+            "anthropic" => "https://api.anthropic.com".to_string(),
+            "openai" => "https://api.openai.com/v1".to_string(),
+            "deepseek" => "https://api.deepseek.com/v1".to_string(),
+            "groq" => "https://api.groq.com/openai/v1".to_string(),
+            "openrouter" => "https://openrouter.ai/api/v1".to_string(),
+            "google_ai_studio" => "https://generativelanguage.googleapis.com/v1beta/openai/".to_string(),
+            _ => "https://api.openai.com/v1".to_string(),
+        }
+    };
+
+    if provider == "anthropic" {
+        Ok(Arc::new(AnthropicClient::new(api_key, model)))
+    } else {
+        Ok(Arc::new(OpenAiClient::new(api_key, api_base, model)))
+    }
+}
+
+pub struct OpenAiClient {
+    client: Client,
+    api_key: String,
+    api_base: String,
+    model: String,
+}
+
+impl OpenAiClient {
+    pub fn new(api_key: String, api_base: String, model: String) -> Self {
+        Self {
+            client: Client::builder()
+                .use_rustls_tls()
+                .build()
+                .unwrap_or_default(),
+            api_key,
+            api_base,
+            model,
+        }
+    }
+}
+
+#[async_trait::async_trait]
+impl LlmClient for OpenAiClient {
+    async fn send_message(
+        &self,
+        messages: &[Message],
+        registry: &ToolRegistry,
+        event_tx: &Sender<AgentEvent>,
+    ) -> Result<Vec<Message>, anyhow::Error> {
+        let system_prompt = "You are ResearchXYZ, a dedicated terminal-native research assistant written fully in Rust.\n\
+        Your sole goal is to conduct deep, thorough research, scrape sources, evaluate data, and compile professional reports (PDF, Word DOCX, and PPTX slide decks) based on user instructions.\n\
+        Always analyze the user's prompt and make a sequential step-by-step checklist plan before you start searching.\n\
+        Use your tools to query academic papers, fetch web content, and format high-quality documents.\n\
+        Be extremely rigorous and cite all of your assertions using the tool references. Avoid making unsupported claims.".to_string();
+
+        let mut history = messages.to_vec();
+        let mut loop_count = 0;
+        const MAX_LOOPS: u32 = 10;
+
+        loop {
+            loop_count += 1;
+            if loop_count > MAX_LOOPS {
+                return Err(anyhow::anyhow!("Reached maximum tool execution loop iterations (10)."));
+            }
+
+            // 1. Map internal conversation history to OpenAI messages
+            let mut openai_messages = Vec::new();
+            openai_messages.push(serde_json::json!({
+                "role": "system",
+                "content": system_prompt.clone()
+            }));
+
+            for msg in &history {
+                match msg.role {
+                    Role::User => {
+                        let mut text = String::new();
+                        for block in &msg.content {
+                            if let ContentBlock::Text(t) = block {
+                                text.push_str(t);
+                            }
+                        }
+                        openai_messages.push(serde_json::json!({
+                            "role": "user",
+                            "content": text
+                        }));
+                    }
+                    Role::Assistant => {
+                        let mut text = String::new();
+                        let mut tool_calls = Vec::new();
+                        for block in &msg.content {
+                            match block {
+                                ContentBlock::Text(t) => {
+                                    text.push_str(t);
+                                }
+                                ContentBlock::ToolUse { id, name, input } => {
+                                    tool_calls.push(serde_json::json!({
+                                        "id": id.clone(),
+                                        "type": "function",
+                                        "function": {
+                                            "name": name.clone(),
+                                            "arguments": input.to_string()
+                                        }
+                                    }));
+                                }
+                                _ => {}
+                            }
+                        }
+                        
+                        let mut assistant_msg = serde_json::json!({
+                            "role": "assistant"
+                        });
+                        if !text.is_empty() {
+                            assistant_msg["content"] = serde_json::Value::String(text);
+                        }
+                        if !tool_calls.is_empty() {
+                            assistant_msg["tool_calls"] = serde_json::Value::Array(tool_calls);
+                        }
+                        openai_messages.push(assistant_msg);
+                    }
+                    Role::Tool => {
+                        for block in &msg.content {
+                            if let ContentBlock::ToolResult { tool_use_id, content: text, is_error: _ } = block {
+                                openai_messages.push(serde_json::json!({
+                                    "role": "tool",
+                                    "tool_call_id": tool_use_id.clone(),
+                                    "content": text.clone()
+                                }));
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 2. Map registered tools to OpenAI tool schemas
+            let mut openai_tools = Vec::new();
+            for tool in registry.list() {
+                openai_tools.push(serde_json::json!({
+                    "type": "function",
+                    "function": {
+                        "name": tool.name(),
+                        "description": tool.description(),
+                        "parameters": tool.input_schema()
+                    }
+                }));
+            }
+
+            let mut request_body = serde_json::json!({
+                "model": self.model.clone(),
+                "messages": openai_messages,
+                "temperature": 0.2,
+            });
+
+            if !openai_tools.is_empty() {
+                request_body["tools"] = serde_json::Value::Array(openai_tools);
+            }
+
+            // 3. Dispatch POST request
+            let url = if self.api_base.ends_with('/') {
+                format!("{}chat/completions", self.api_base)
+            } else {
+                format!("{}/chat/completions", self.api_base)
+            };
+
+            let res = self.client.post(&url)
+                .header("Authorization", format!("Bearer {}", self.api_key))
+                .header("Content-Type", "application/json")
+                .json(&request_body)
+                .send()
+                .await?;
+
+            if !res.status().is_success() {
+                let status = res.status();
+                let err_text = res.text().await.unwrap_or_default();
+                return Err(anyhow::anyhow!("OpenAI-compatible API failed with HTTP {}: {}", status, err_text));
+            }
+
+            let resp_json: serde_json::Value = res.json().await?;
+
+            // 4. Parse response Choices
+            let mut assistant_content = Vec::new();
+            let mut tool_calls = Vec::new();
+
+            if let Some(choices) = resp_json["choices"].as_array() {
+                if let Some(choice) = choices.first() {
+                    if let Some(msg) = choice["message"].as_object() {
+                        if let Some(content_str) = msg.get("content").and_then(|v| v.as_str()) {
+                            if !content_str.is_empty() {
+                                assistant_content.push(ContentBlock::Text(content_str.to_string()));
+                                let _ = event_tx.send(AgentEvent::TextDelta(content_str.to_string())).await;
+                            }
+                        }
+                        if let Some(tc_array) = msg.get("tool_calls").and_then(|v| v.as_array()) {
+                            for tc in tc_array {
+                                if let (Some(id), Some(name)) = (tc["id"].as_str(), tc["function"]["name"].as_str()) {
+                                    let args_str = tc["function"]["arguments"].as_str().unwrap_or("{}");
+                                    let input: serde_json::Value = serde_json::from_str(args_str).unwrap_or(serde_json::Value::Null);
+                                    tool_calls.push((id.to_string(), name.to_string(), input.clone()));
+                                    assistant_content.push(ContentBlock::ToolUse {
+                                        id: id.to_string(),
+                                        name: name.to_string(),
+                                        input,
+                                    });
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            if assistant_content.is_empty() && tool_calls.is_empty() {
+                return Err(anyhow::anyhow!("Received empty response from OpenAI-compatible provider. Payload: {}", resp_json));
+            }
+
+            // Append assistant response to history
+            history.push(Message {
+                role: Role::Assistant,
+                content: assistant_content,
+            });
+
+            // 5. If no tool calls, turn is finished!
+            if tool_calls.is_empty() {
+                let _ = event_tx.send(AgentEvent::TurnComplete).await;
+                return Ok(history);
+            }
+
+            // 6. Execute all tool calls
+            let mut tool_results = Vec::new();
+            for (id, name, input) in tool_calls {
+                let _ = event_tx.send(AgentEvent::ToolCallStarted {
+                    id: id.clone(),
+                    name: name.clone(),
+                    input: input.clone(),
+                }).await;
+
+                let result = if let Some(tool) = registry.get(&name) {
+                    tool.call(input).await
+                } else {
+                    Err(ToolError::InvalidInput(format!("Tool '{}' not found in registry.", name)))
+                };
+
+                let is_error = result.is_err();
+                let content_str = match &result {
+                    Ok(res) => res.content.clone(),
+                    Err(err) => err.to_string(),
+                };
+
+                let _ = event_tx.send(AgentEvent::ToolCallFinished {
+                    id: id.clone(),
+                    name: name.clone(),
+                    result: result.clone(),
+                }).await;
+
+                tool_results.push(ContentBlock::ToolResult {
+                    tool_use_id: id,
+                    content: content_str,
+                    is_error,
+                });
+            }
+
+            // Append tool results to history
+            history.push(Message {
+                role: Role::Tool,
+                content: tool_results,
+            });
+        }
+    }
+}

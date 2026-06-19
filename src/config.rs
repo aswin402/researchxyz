@@ -17,6 +17,7 @@ pub struct LlmConfig {
     pub provider: String,
     pub model: String,
     pub api_key_env: String,
+    pub api_base: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -63,6 +64,7 @@ impl Config {
                 provider: "anthropic".to_string(),
                 model: "claude-sonnet-4-6".to_string(),
                 api_key_env: "RESEARCHXYZ_API_KEY".to_string(),
+                api_base: None,
             },
             output: OutputConfig {
                 dir: "~/researchxyz-output".to_string(),
