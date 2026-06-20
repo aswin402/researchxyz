@@ -112,6 +112,7 @@ impl LlmClient for AnthropicClient {
 
         loop {
             loop_count += 1;
+            compress_history(&mut history);
             if loop_count > MAX_LOOPS {
                 return Err(anyhow::anyhow!("Reached maximum tool execution loop iterations (10)."));
             }
@@ -409,6 +410,7 @@ impl LlmClient for OpenAiClient {
 
         loop {
             loop_count += 1;
+            compress_history(&mut history);
             if loop_count > MAX_LOOPS {
                 return Err(anyhow::anyhow!("Reached maximum tool execution loop iterations (10)."));
             }
@@ -621,3 +623,152 @@ impl LlmClient for OpenAiClient {
         }
     }
 }
+
+fn compress_history(history: &mut [Message]) {
+    // 1. Calculate total character count of all ToolResult blocks.
+    let mut total_chars = 0;
+    for msg in history.iter() {
+        for block in &msg.content {
+            if let ContentBlock::ToolResult { content, .. } = block {
+                total_chars += content.len();
+            }
+        }
+    }
+
+    // Heuristic threshold: if total tool result content exceeds 40,000 characters (~10,000 tokens)
+    const MAX_CHARS_THRESHOLD: usize = 40_000;
+    if total_chars <= MAX_CHARS_THRESHOLD {
+        return;
+    }
+
+    tracing::info!("Estimated message context size ({} chars) is over threshold ({} chars). Running history compression.", total_chars, MAX_CHARS_THRESHOLD);
+
+    // 2. Locate all ToolResult indices in the history
+    let mut tool_result_blocks = Vec::new();
+    for (m_idx, msg) in history.iter().enumerate() {
+        for (b_idx, block) in msg.content.iter().enumerate() {
+            if let ContentBlock::ToolResult { .. } = block {
+                tool_result_blocks.push((m_idx, b_idx));
+            }
+        }
+    }
+
+    let total_tool_results = tool_result_blocks.len();
+    if total_tool_results <= 2 {
+        return;
+    }
+
+    // Compress everything except the last 2 tool results
+    let compress_limit = total_tool_results - 2;
+    let mut compressed_count = 0;
+    for i in 0..compress_limit {
+        let (m_idx, b_idx) = tool_result_blocks[i];
+        if let ContentBlock::ToolResult { content, .. } = &mut history[m_idx].content[b_idx] {
+            if content.len() > 1500 {
+                let original_len = content.len();
+                let compressed_content = format!(
+                    "{} ...\n\n[... Truncated {} characters of older raw tool output to prevent context overflow. Refer to earlier assistant reasoning for extracted facts ...] \n\n...{}",
+                    &content[..800],
+                    original_len - 1600,
+                    &content[original_len - 800..]
+                );
+                *content = compressed_content;
+                compressed_count += 1;
+            }
+        }
+    }
+    
+    if compressed_count > 0 {
+        tracing::info!("Successfully compressed {} older tool result blocks.", compressed_count);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::core::types::Role;
+
+    #[test]
+    fn test_compress_history() {
+        let mut history = vec![
+            Message {
+                role: Role::User,
+                content: vec![ContentBlock::Text("Query 1".to_string())],
+            },
+            Message {
+                role: Role::Tool,
+                content: vec![
+                    ContentBlock::ToolResult {
+                        tool_use_id: "1".to_string(),
+                        content: "A".repeat(25000), // 25,000 characters
+                        is_error: false,
+                    },
+                ],
+            },
+            Message {
+                role: Role::Tool,
+                content: vec![
+                    ContentBlock::ToolResult {
+                        tool_use_id: "2".to_string(),
+                        content: "B".repeat(25000), // 25,000 characters
+                        is_error: false,
+                    },
+                ],
+            },
+            Message {
+                role: Role::Tool,
+                content: vec![
+                    ContentBlock::ToolResult {
+                        tool_use_id: "3".to_string(),
+                        content: "C".repeat(5000), // 5,000 characters (kept intact because it's last)
+                        is_error: false,
+                    },
+                ],
+            },
+            Message {
+                role: Role::Tool,
+                content: vec![
+                    ContentBlock::ToolResult {
+                        tool_use_id: "4".to_string(),
+                        content: "D".repeat(5000), // 5,000 characters (kept intact because it's last)
+                        is_error: false,
+                    },
+                ],
+            },
+        ];
+
+        compress_history(&mut history);
+
+        // ToolResult 1 and 2 should be compressed because:
+        // - Total character count of all ToolResults = 25000 + 25000 + 5000 + 5000 = 60,000 (which is > 40,000 threshold)
+        // - ToolResult 3 and 4 are the last 2 tool results, so they are kept completely intact.
+        // - ToolResult 1 and 2 are older tool results, and their lengths are > 1500 characters, so they are compressed.
+
+        if let ContentBlock::ToolResult { content, .. } = &history[1].content[0] {
+            assert!(content.contains("Truncated"));
+            assert_eq!(content.len(), 1600 + " ...\n\n[... Truncated 23400 characters of older raw tool output to prevent context overflow. Refer to earlier assistant reasoning for extracted facts ...] \n\n...".len());
+        } else {
+            panic!("Expected ToolResult block");
+        }
+
+        if let ContentBlock::ToolResult { content, .. } = &history[2].content[0] {
+            assert!(content.contains("Truncated"));
+            assert_eq!(content.len(), 1600 + " ...\n\n[... Truncated 23400 characters of older raw tool output to prevent context overflow. Refer to earlier assistant reasoning for extracted facts ...] \n\n...".len());
+        } else {
+            panic!("Expected ToolResult block");
+        }
+
+        if let ContentBlock::ToolResult { content, .. } = &history[3].content[0] {
+            assert_eq!(content, &"C".repeat(5000));
+        } else {
+            panic!("Expected ToolResult block");
+        }
+
+        if let ContentBlock::ToolResult { content, .. } = &history[4].content[0] {
+            assert_eq!(content, &"D".repeat(5000));
+        } else {
+            panic!("Expected ToolResult block");
+        }
+    }
+}
+

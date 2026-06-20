@@ -4,6 +4,15 @@ All notable changes to the **ResearchXYZ** project will be documented in this fi
 
 ---
 
+## [v0.1.4] - 2026-06-20
+
+### Added
+- **Dynamic Context Compression**:
+  - Implemented an automatic context history compression engine to prevent context window overflow during multi-turn ReAct loops.
+  - Monitors total character payload of conversation history and triggers pruning when surpassing a 40,000-character threshold (~10,000 tokens).
+  - Dynamically summarizes/truncates older `ToolResult` blocks (retaining only first/last 800 characters) while preserving the last 2 tool results completely intact to maintain conversational flow.
+  - Implemented unit test suites verifying the truncation limits, boundaries, and correct preservation of recent context.
+
 ## [v0.1.3] - 2026-06-20
 
 ### Added

@@ -121,3 +121,17 @@ The ReAct research loop automatically retrieves and acts on historical experienc
 3.  **Active Correction Logging (`/correct` command)**: 
     *   In both the TUI interface and headless `--test-agent` mode, entering `/correct <instruction>` (e.g. `/correct format PDF reports using simple layouts and no decorative tables`) registers a `UserCorrection` memory entry in the background immediately, adjusting future agent outputs instantly.
 
+---
+
+## 5. Context Management and Compression System 📉
+
+To handle long-running, multi-turn research tasks involving high-volume outputs (e.g., full web scraping text from `web_fetch`), ResearchXYZ features an automated **Context Management & History Compression** pipeline.
+
+### Compression Trigger & Heuristics
+1.  **Threshold Monitoring**: Prior to dispatching requests to the LLM backend, the agent estimates the character payload of the active conversation thread.
+2.  **Trigger Point**: If the cumulative size of all tool results exceeds **40,000 characters** (~10,000 tokens), the compression pipeline triggers automatically.
+3.  **Pruning Rules**:
+    *   **Intact Window**: The **most recent 2 tool results** are kept completely intact so the agent can refer to them in granular detail for its current reasoning steps.
+    *   **Pruning Target**: For all older tool results exceeding 1,500 characters, the content is compressed down by retaining the first 800 characters (headers/metadata) and the last 800 characters (conclusions/footers), substituting the middle content with a truncation notification.
+    *   **Benefits**: This dramatically reduces input token footprint, lowers latency, avoids API context window overflows, and ensures the agent does not lose focus on the main query amid stale source data.
+
