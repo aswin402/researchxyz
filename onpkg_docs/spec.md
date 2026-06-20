@@ -156,6 +156,15 @@ pub struct Theme {
       "type": "array",
       "items": { "type": "string" },
       "default": []
+    },
+    "entry_type": {
+      "type": "string",
+      "enum": ["Fact", "ToolFailure", "LinkFailure", "UserCorrection"],
+      "default": "Fact"
+    },
+    "metadata": {
+      "type": "object",
+      "default": {}
     }
   },
   "required": ["query", "summary", "keywords"]
