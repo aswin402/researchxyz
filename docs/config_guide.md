@@ -71,12 +71,32 @@ If no fonts are found, the PDF creation tool will return an upstream compilation
 
 ## 4. Local Persistent Memory & Self-Improvement System 🧠
 
-ResearchXYZ automatically caches synthesized research facts, abstracts, takeaways, and sources in a local database located at:
-```bash
-~/.config/researchxyz/memory.json
-```
+ResearchXYZ automatically caches synthesized research facts, abstracts, takeaways, and sources in a local database.
 
-This file is a flat JSON array of memory entries structured as follows:
+### Hybrid Storage Engines & Dual-Write Fallback
+To ensure high-performance, structured retrieval and robust backward compatibility, the memory manager operates with a dual-engine architecture:
+
+1. **Native Cognitive Memory Server (`openmemory_rs`)**:
+   - **Detection**: On startup, ResearchXYZ automatically scans for the `openmemory_rs` binary at `~/.local/bin/openmemory_rs`. If found, it integrates it as the primary cognitive storage engine.
+   - **Protocol**: Spawns `openmemory_rs` as a child process and communicates via stdio-based JSON-RPC (Model Context Protocol).
+   - **Cognitive Schemas**:
+     - *Episodic Reflections*: Maps memories to reflections via `log_reflection` and queries them with `retrieve_episodic_reflections`.
+     - *Knowledge Graph Entities*: Maps keyword tags and categories to semantic entities and observations via `create_entities` and `search_nodes`.
+   - **Database Location**: Records are stored transactionally in a local SQLite file:
+     ```bash
+     ~/.config/researchxyz/openmemory.db
+     ```
+2. **Flat File Database (`memory.json`)**:
+   - **Location**:
+     ```bash
+     ~/.config/researchxyz/memory.json
+     ```
+   - **Fallback and Dual-Write**: All new memory inserts are written to both `openmemory_rs` (if active) and `memory.json`. If the `openmemory_rs` server is not installed or encounters an error, the system seamlessly falls back to querying `memory.json` using keyword-overlap calculations.
+
+---
+
+### `memory.json` Structure
+The flat-file database is structured as a JSON array of entries:
 
 ```json
 [

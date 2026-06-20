@@ -4,6 +4,15 @@ All notable changes to the **ResearchXYZ** project will be documented in this fi
 
 ---
 
+## [v0.1.5] - 2026-06-20
+
+### Added
+- **Native openmemory_rs Cognitive Storage Integration**:
+  - Upgraded the core memory manager backend to automatically detect and integrate with `openmemory_rs` cognitive memory server binary if present on the system.
+  - Implemented an stdio-based JSON-RPC (MCP) handshake wrapper that starts `openmemory_rs` as a child process and communicates with it seamlessly.
+  - Maps ResearchXYZ memories to the episodic reflections (`log_reflection` / `retrieve_episodic_reflections`) and knowledge graph nodes (`create_entities` / `search_nodes`) of `openmemory_rs`, saving them to a safe local SQLite file `~/.config/researchxyz/openmemory.db`.
+  - Implemented a dual-write fallback mechanism: always updates the local `memory.json` backup flat file and automatically falls back to keyword-overlap JSON searches if the `openmemory_rs` server is missing, maintaining full backward compatibility.
+
 ## [v0.1.4] - 2026-06-20
 
 ### Added
