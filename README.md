@@ -19,7 +19,7 @@ Its sole purpose is to conduct deep, thorough research: finding relevant sources
 *   **Multi-Backend Search & Scraping (`web_search` / `web_fetch`)**: Attempts high-fidelity endpoints (Websurfx, Tavily, Exa) and falls back to keyless DuckDuckGo/Mojeek HTML scrapers. Walks DOM nodes natively via `scraper` and `ego-tree` to extract clean text.
 *   **Rich Document Parser (`read_doc`)**: Programmatically extracts text from local files (PDFs via `pdf-extract`, Word DOCX files via `docx-rs`, and Excel spreadsheets via `calamine`).
 *   **Structured Citations**: Feeds strict citation reference mappings into LLM context, automatically compiling inline source footnotes and bibliographies.
-*   **Local Persistent Memory Database**: Implements a lightweight, native, and zero-dependency memory store (`memory_search` / `memory_store`) caching previously synthesized facts, paper abstracts, and sources locally, ranking findings using keyword overlap scoring.
+*   **Local Persistent Memory & Self-Improvement System**: Implements a lightweight, zero-dependency local store (`memory_search` / `memory_store`) caching research facts, tool failures, and user corrections, leveraging keyword overlap scoring and type boosts to avoid failed workflows and apply user-provided corrections.
 *   **Model Context Protocol (MCP)**: Features built-in stdio client integrations using `rmcp` to plug in external tool servers (such as presentation builders).
 
 ---

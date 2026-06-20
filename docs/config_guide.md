@@ -69,7 +69,7 @@ If no fonts are found, the PDF creation tool will return an upstream compilation
 
 ---
 
-## 4. Local Persistent Memory 🧠
+## 4. Local Persistent Memory & Self-Improvement System 🧠
 
 ResearchXYZ automatically caches synthesized research facts, abstracts, takeaways, and sources in a local database located at:
 ```bash
@@ -83,16 +83,41 @@ This file is a flat JSON array of memory entries structured as follows:
   {
     "id": "1718816823456_rust",
     "timestamp": "2026-06-19T14:00:00Z",
+    "entry_type": "Fact",
     "query": "Rust memory safety guarantees",
     "summary": "Rust guarantees memory safety at compile-time using ownership rules, lifetimes, and borrow checker. It prevents data races, double frees, and dangling pointers without a garbage collector...",
     "keywords": ["rust", "memory safety", "borrow checker"],
-    "sources": ["https://doc.rust-lang.org/book/ch04-00-understanding-ownership.html"]
+    "sources": ["https://doc.rust-lang.org/book/ch04-00-understanding-ownership.html"],
+    "metadata": {}
+  },
+  {
+    "id": "1718821000123_correct",
+    "timestamp": "2026-06-20T12:00:00Z",
+    "entry_type": "UserCorrection",
+    "query": "format PDF using standard font style and simple layout",
+    "summary": "format PDF using standard font style and simple layout",
+    "keywords": ["pdf", "format", "font", "style", "layout"],
+    "sources": [],
+    "metadata": null
   }
 ]
 ```
 
-### Memory Retrieval and Storage
-The agent uses the following guidelines automatically during a research loop:
-1. **Query Overlap Search**: When a new query is submitted, the agent runs the `memory_search` tool first. It parses keywords from the query and performs a case-insensitive overlap scan on stored queries, keywords, and summaries to return matching records.
-2. **Auto-Saving Takeaways**: Upon completing a research run, the agent invokes `memory_store` to record its synthesised answers, key keywords, and URLs referenced, making this context available to future sessions.
+### Memory Entry Types
+The memory system classifies records into four distinct types:
+*   **`Fact`**: Standard synthesised summaries, facts, and paper references. (Default)
+*   **`ToolFailure`**: Logged errors from API tools, rate limits, or failing queries, used to steer the agent away from repetitive failures.
+*   **`LinkFailure`**: Discovered broken links, HTTP errors, or dead endpoints encountered during web research.
+*   **`UserCorrection`**: Explicit formatting guidelines, user constraints, or workflow corrections.
+
+### Self-Improvement Workflow & Adjustments
+The ReAct research loop automatically retrieves and acts on historical experiences:
+1.  **Memory Retrieval Boost**: At the start of a research task, the agent queries memory. Relevant records are matched based on keyword overlaps and boosted depending on their type:
+    *   `UserCorrection` entries receive a **`+5`** boost.
+    *   `ToolFailure` & `LinkFailure` entries receive a **`+2`** boost.
+2.  **Workflow Adjustment**: The system prompts instruct the agent to:
+    *   Strictly adhere to instructions found in `UserCorrection` blocks.
+    *   Avoid using URLs or tool queries matched in `LinkFailure` or `ToolFailure` entries.
+3.  **Active Correction Logging (`/correct` command)**: 
+    *   In both the TUI interface and headless `--test-agent` mode, entering `/correct <instruction>` (e.g. `/correct format PDF reports using simple layouts and no decorative tables`) registers a `UserCorrection` memory entry in the background immediately, adjusting future agent outputs instantly.
 

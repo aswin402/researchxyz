@@ -4,6 +4,20 @@ All notable changes to the **ResearchXYZ** project will be documented in this fi
 
 ---
 
+## [v0.1.3] - 2026-06-20
+
+### Added
+- **Self-Improvement / Procedural Memory System**:
+  - Upgraded local flat-file persistent memory database (`memory.json`) to support detailed `EntryType` classifications: `Fact`, `ToolFailure`, `LinkFailure`, and `UserCorrection`.
+  - Added a generic metadata field (`serde_json::Value`) for recording context-specific structured information.
+  - Implemented entry-type-based relevance scoring boosts during keyword overlap searches (+5 boost for `UserCorrection`, +2 for `ToolFailure`/`LinkFailure`).
+- **Workflow Corrections via `/correct` Prefix**:
+  - Added `/correct <rule>` parser hook to intercept corrections in both TUI input and `--test-agent` CLI commands, automatically logging them as `UserCorrection` memory entries.
+- **LLM System Prompt Self-Correction Guidance**:
+  - Contextualised OpenAI/compatible and Anthropic client prompts to review retrieved memory entries, avoid querying historically failed endpoints/links, and strictly adjust output formatting or workflow behavior based on user corrections.
+- **Robust Integration Testing**:
+  - Added test suites for verification of memory schema migrations and relevance boost searches.
+
 ## [v0.1.1] - 2026-06-20
 
 ### Added
