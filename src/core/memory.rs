@@ -61,11 +61,11 @@ impl MemoryManager {
         Ok(())
     }
 
-    pub fn add(&mut self, query: &str, summary: &str, keywords: Vec<String>, sources: Vec<String>) -> Result<(), anyhow::Error> {
-        self.add_detailed(query, summary, keywords, sources, EntryType::Fact, serde_json::Value::Null)
+    pub async fn add(&mut self, query: &str, summary: &str, keywords: Vec<String>, sources: Vec<String>) -> Result<(), anyhow::Error> {
+        self.add_detailed(query, summary, keywords, sources, EntryType::Fact, serde_json::Value::Null).await
     }
 
-    pub fn add_detailed(
+    pub async fn add_detailed(
         &mut self,
         query: &str,
         summary: &str,
@@ -74,6 +74,7 @@ impl MemoryManager {
         entry_type: EntryType,
         metadata: serde_json::Value,
     ) -> Result<(), anyhow::Error> {
+        tracing::info!("Adding memory entry: type={:?}, query='{}'", entry_type, query);
         // Try openmemory_rs if available
         if let Some(_) = get_openmemory_bin() {
             let status = match entry_type {
@@ -85,13 +86,13 @@ impl MemoryManager {
                 "taskDescription": query,
                 "status": status,
                 "attemptNumber": 1,
-                "stepsTaken": vec![format!("Log reflection for: {}", query)],
+                "stepsTaken": format!("Log reflection for: {}", query),
                 "errorEncountered": if status == "Failed" { Some(summary) } else { None },
                 "rootCause": if status == "Failed" { Some("API error or resource issue") } else { None },
                 "solutionApplied": None::<String>,
                 "reflection": summary
             });
-            let _ = call_openmemory_tool_sync("log_reflection", reflection_args);
+            let _ = call_openmemory_tool("log_reflection", reflection_args).await;
 
             let entity_type_str = match entry_type {
                 EntryType::UserCorrection => "UserCorrection",
@@ -108,7 +109,7 @@ impl MemoryManager {
                     }
                 ]
             });
-            let _ = call_openmemory_tool_sync("create_entities", entities_args);
+            let _ = call_openmemory_tool("create_entities", entities_args).await;
         }
 
         let timestamp = chrono::Local::now().to_rfc3339();
@@ -130,7 +131,8 @@ impl MemoryManager {
         Ok(())
     }
 
-    pub fn search(&self, query: &str, max_results: usize) -> Vec<MemoryEntry> {
+    pub async fn search(&self, query: &str, max_results: usize) -> Vec<MemoryEntry> {
+        tracing::info!("Searching memory for query: '{}'", query);
         let mut results = Vec::new();
         
         // Try openmemory_rs if available
@@ -142,7 +144,7 @@ impl MemoryManager {
                 "query": query,
                 "limit": max_results
             });
-            if let Ok(res_val) = call_openmemory_tool_sync("retrieve_episodic_reflections", reflections_args) {
+            if let Ok(res_val) = call_openmemory_tool("retrieve_episodic_reflections", reflections_args).await {
                 if let Some(content_array) = res_val.get("content").and_then(|c| c.as_array()) {
                     if let Some(content_obj) = content_array.first() {
                         if let Some(text) = content_obj.get("text").and_then(|t| t.as_str()) {
@@ -188,7 +190,7 @@ impl MemoryManager {
             let search_args = serde_json::json!({
                 "query": query
             });
-            if let Ok(res_val) = call_openmemory_tool_sync("search_nodes", search_args) {
+            if let Ok(res_val) = call_openmemory_tool("search_nodes", search_args).await {
                 if let Some(content_array) = res_val.get("content").and_then(|c| c.as_array()) {
                     if let Some(content_obj) = content_array.first() {
                         if let Some(text) = content_obj.get("text").and_then(|t| t.as_str()) {
@@ -279,6 +281,7 @@ impl MemoryManager {
 
         // If openmemory was missing or returned no results, fall back to the JSON file
         if results.is_empty() {
+            tracing::info!("No results from openmemory_rs or binary missing; falling back to flat-file memory.json");
             let query_words: Vec<String> = query.to_lowercase()
                 .split(|c: char| !c.is_alphanumeric())
                 .filter(|s| s.len() > 2)
@@ -354,6 +357,8 @@ async fn call_openmemory_tool(tool_name: &str, arguments: serde_json::Value) -> 
         let _ = std::fs::create_dir_all(&db_dir);
     }
 
+    tracing::info!("Spawning openmemory_rs tool: {} (arguments: {})", tool_name, arguments);
+
     let mut child = Command::new(bin_path)
         .env("MEMORY_DB_PATH", db_path.to_string_lossy().to_string())
         .stdin(std::process::Stdio::piped())
@@ -374,7 +379,7 @@ async fn call_openmemory_tool(tool_name: &str, arguments: serde_json::Value) -> 
             "capabilities": {},
             "clientInfo": {
                 "name": "researchxyz",
-                "version": "0.1.4"
+                "version": "0.1.5"
             }
         },
         "id": 1
@@ -420,6 +425,7 @@ async fn call_openmemory_tool(tool_name: &str, arguments: serde_json::Value) -> 
     
     if let Some(error) = response_val.get("error") {
         if !error.is_null() {
+            tracing::warn!("openmemory_rs tool call '{}' returned error: {}", tool_name, error);
             return Err(anyhow::anyhow!("openmemory_rs error: {}", error));
         }
     }
@@ -427,19 +433,11 @@ async fn call_openmemory_tool(tool_name: &str, arguments: serde_json::Value) -> 
     let result = response_val.get("result")
         .ok_or_else(|| anyhow::anyhow!("Missing result field in JSON-RPC response"))?;
         
+    tracing::info!("openmemory_rs tool call '{}' completed successfully", tool_name);
     Ok(result.clone())
 }
 
-fn call_openmemory_tool_sync(tool_name: &str, arguments: serde_json::Value) -> Result<serde_json::Value, anyhow::Error> {
-    if let Ok(handle) = tokio::runtime::Handle::try_current() {
-        handle.block_on(call_openmemory_tool(tool_name, arguments))
-    } else {
-        let rt = tokio::runtime::Builder::new_current_thread()
-            .enable_all()
-            .build()?;
-        rt.block_on(call_openmemory_tool(tool_name, arguments))
-    }
-}
+
 
 #[allow(dead_code)]
 #[derive(serde::Deserialize, Debug, Clone)]
@@ -468,8 +466,8 @@ struct OpenMemoryNode {
 mod tests {
     use super::*;
 
-    #[test]
-    fn test_memory_add_and_search() {
+    #[tokio::test]
+    async fn test_memory_add_and_search() {
         let temp_dir = std::env::temp_dir();
         let file_path = temp_dir.join(format!("test_memory_{}.json", chrono::Utc::now().timestamp_millis()));
         
@@ -487,14 +485,14 @@ mod tests {
             "Rust guarantees safety using borrow checker and lifetime rules.",
             vec!["rust".to_string(), "memory".to_string(), "safety".to_string()],
             vec!["https://rust-lang.org".to_string()]
-        ).unwrap();
+        ).await.unwrap();
         
         manager.add(
             "Python dynamic typing",
             "Python uses dynamic typing and is garbage collected.",
             vec!["python".to_string(), "typing".to_string()],
             vec![]
-        ).unwrap();
+        ).await.unwrap();
 
         // Add a User Correction entry
         manager.add_detailed(
@@ -504,19 +502,19 @@ mod tests {
             vec![],
             EntryType::UserCorrection,
             serde_json::json!({ "format": "bullets" })
-        ).unwrap();
+        ).await.unwrap();
 
         // Reload to verify persistence
         let reloaded = MemoryManager::new_with_path(file_path.clone());
         assert_eq!(reloaded.entries.len(), 3);
         
         // Search overlap
-        let results = reloaded.search("Rust borrow checker", 5);
+        let results = reloaded.search("Rust borrow checker", 5).await;
         assert_eq!(results.len(), 1);
         assert_eq!(results[0].query, "Rust memory safety guarantees");
         
         // Search for User Correction
-        let results_correction = reloaded.search("ArXiv PDF format details", 5);
+        let results_correction = reloaded.search("ArXiv PDF format details", 5).await;
         assert_eq!(results_correction.len(), 1);
         assert_eq!(results_correction[0].entry_type, EntryType::UserCorrection);
         

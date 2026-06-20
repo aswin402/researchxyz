@@ -4,6 +4,17 @@ All notable changes to the **ResearchXYZ** project will be documented in this fi
 
 ---
 
+## [v0.1.6] - 2026-06-20
+
+### Added
+- **Real-Time CLI Verbose Logging (`--verbose`)**:
+  - Implemented a command-line `--verbose` flag that routes standard `tracing` log events to standard error (stderr) in real-time, providing immediate visibility for debugging and auditability.
+  - Implemented safe log routing to prevent output collision/terminal corruption when running in interactive Terminal User Interface (TUI) mode.
+  - Added tracing log instrumentations across LLM client dispatches, response parses, tool execution states, and local/remote persistent memory accesses.
+- **Asynchronous Memory Manager Refactoring**:
+  - Re-architected the `MemoryManager` search and storage interfaces to be native async Rust methods.
+  - Resolved runtime panics ("Cannot start a runtime from within a runtime") triggered by calling blocking sync wrappers under active Tokio task execution threads.
+
 ## [v0.1.5] - 2026-06-20
 
 ### Added

@@ -23,14 +23,44 @@ use std::path::PathBuf;
 use tokio::sync::mpsc;
 use tui_textarea::TextArea;
 
-fn init_logging() -> Result<()> {
+#[derive(Clone)]
+struct DualWriter {
+    file_writer: tracing_appender::rolling::DailyAppender,
+    verbose: bool,
+}
+
+impl std::io::Write for DualWriter {
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        let mut f = self.file_writer.clone();
+        let res = f.write(buf);
+        if self.verbose {
+            let _ = std::io::stderr().write_all(buf);
+        }
+        res
+    }
+    fn flush(&mut self) -> std::io::Result<()> {
+        let mut f = self.file_writer.clone();
+        let res = f.flush();
+        if self.verbose {
+            let _ = std::io::stderr().flush();
+        }
+        res
+    }
+}
+
+fn init_logging(verbose: bool) -> Result<()> {
     let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
     let log_dir = PathBuf::from(home).join(".config/researchxyz/logs");
     fs::create_dir_all(&log_dir)?;
     
     let file_appender = tracing_appender::rolling::daily(log_dir, "researchxyz.log");
+    let writer = DualWriter {
+        file_writer: file_appender,
+        verbose,
+    };
+    
     tracing_subscriber::fmt()
-        .with_writer(move || file_appender.clone())
+        .with_writer(move || writer.clone())
         .with_env_filter("info")
         .init();
         
@@ -91,6 +121,14 @@ async fn main() -> Result<()> {
     }
 
     let args: Vec<String> = std::env::args().collect();
+    let verbose = args.contains(&"--verbose".to_string());
+    let is_tui = !args.contains(&"--test-agent".to_string())
+        && !args.contains(&"configure".to_string())
+        && !args.contains(&"--version".to_string())
+        && !args.contains(&"-v".to_string());
+    let show_verbose_stderr = verbose && !is_tui;
+    let _ = init_logging(show_verbose_stderr);
+
     if args.contains(&"--version".to_string()) || args.contains(&"-v".to_string()) {
         println!("researchxyz v{}", env!("CARGO_PKG_VERSION"));
         return Ok(());
@@ -164,7 +202,7 @@ async fn main() -> Result<()> {
                 vec![],
                 crate::core::memory::EntryType::UserCorrection,
                 serde_json::Value::Null
-            );
+            ).await;
             println!("✓ Registered workflow correction in persistent memory.\n");
         }
 
@@ -213,9 +251,7 @@ async fn main() -> Result<()> {
         return Ok(());
     }
 
-    // 1. Init configuration and logging
-    let _ = init_logging();
-    
+    // 1. Init configuration
     let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
     let config_path = PathBuf::from(home).join(".config/researchxyz/config.toml");
     let mut config = if config_path.exists() {
@@ -384,7 +420,7 @@ async fn main() -> Result<()> {
                                                 vec![],
                                                 crate::core::memory::EntryType::UserCorrection,
                                                 serde_json::Value::Null
-                                            );
+                                            ).await;
                                         }
 
                                         // Convert prompt to message history

@@ -170,6 +170,7 @@ impl LlmClient for AnthropicClient {
             };
 
             // 3. Dispatch POST request
+            tracing::info!("Dispatching Anthropic LLM request (model: {})", self.model);
             let res = self.client.post("https://api.anthropic.com/v1/messages")
                 .header("x-api-key", &self.api_key)
                 .header("anthropic-version", "2023-06-01")
@@ -181,6 +182,7 @@ impl LlmClient for AnthropicClient {
             if !res.status().is_success() {
                 let status = res.status();
                 let err_text = res.text().await.unwrap_or_default();
+                tracing::error!("Anthropic API error response (HTTP {}): {}", status, err_text);
                 return Err(anyhow::anyhow!("Anthropic API failed with HTTP {}: {}", status, err_text));
             }
 
@@ -212,6 +214,8 @@ impl LlmClient for AnthropicClient {
                 }
             }
 
+            tracing::info!("Parsed Anthropic response: text_length={} chars, {} tool call(s)", text_response.len(), tool_calls.len());
+
             // Append assistant response to history
             history.push(Message {
                 role: Role::Assistant,
@@ -220,6 +224,7 @@ impl LlmClient for AnthropicClient {
 
             // 5. If no tool calls, turn is finished!
             if tool_calls.is_empty() {
+                tracing::info!("No tool calls returned. Turn complete.");
                 let _ = event_tx.send(AgentEvent::TurnComplete).await;
                 return Ok(history);
             }
@@ -227,6 +232,7 @@ impl LlmClient for AnthropicClient {
             // 6. Execute all tool calls in parallel/sequence
             let mut tool_results = Vec::new();
             for (id, name, input) in tool_calls {
+                tracing::info!("Executing tool '{}' with input: {}", name, input);
                 let _ = event_tx.send(AgentEvent::ToolCallStarted {
                     id: id.clone(),
                     name: name.clone(),
@@ -244,6 +250,8 @@ impl LlmClient for AnthropicClient {
                     Ok(res) => res.content.clone(),
                     Err(err) => err.to_string(),
                 };
+
+                tracing::info!("Tool '{}' finished. Result size: {} bytes, is_error={}", name, content_str.len(), is_error);
 
                 let _ = event_tx.send(AgentEvent::ToolCallFinished {
                     id: id.clone(),
@@ -517,6 +525,7 @@ impl LlmClient for OpenAiClient {
                 format!("{}/chat/completions", self.api_base)
             };
 
+            tracing::info!("Dispatching OpenAI-compatible LLM request (model: {}) to {}", self.model, url);
             let res = self.client.post(&url)
                 .header("Authorization", format!("Bearer {}", self.api_key))
                 .header("Content-Type", "application/json")
@@ -527,6 +536,7 @@ impl LlmClient for OpenAiClient {
             if !res.status().is_success() {
                 let status = res.status();
                 let err_text = res.text().await.unwrap_or_default();
+                tracing::error!("OpenAI-compatible API error response (HTTP {}): {}", status, err_text);
                 return Err(anyhow::anyhow!("OpenAI-compatible API failed with HTTP {}: {}", status, err_text));
             }
 
@@ -548,22 +558,24 @@ impl LlmClient for OpenAiClient {
                         if let Some(tc_array) = msg.get("tool_calls").and_then(|v| v.as_array()) {
                             for tc in tc_array {
                                 if let (Some(id), Some(name)) = (tc["id"].as_str(), tc["function"]["name"].as_str()) {
-                                    let args_str = tc["function"]["arguments"].as_str().unwrap_or("{}");
-                                    let input: serde_json::Value = serde_json::from_str(args_str).unwrap_or(serde_json::Value::Null);
-                                    let extra_content = tc.get("extra_content").cloned();
-                                    tool_calls.push((id.to_string(), name.to_string(), input.clone()));
-                                    assistant_content.push(ContentBlock::ToolUse {
-                                        id: id.to_string(),
-                                        name: name.to_string(),
-                                        input,
-                                        extra_content,
-                                    });
-                                }
+                                     let args_str = tc["function"]["arguments"].as_str().unwrap_or("{}");
+                                     let input: serde_json::Value = serde_json::from_str(args_str).unwrap_or(serde_json::Value::Null);
+                                     let extra_content = tc.get("extra_content").cloned();
+                                     tool_calls.push((id.to_string(), name.to_string(), input.clone()));
+                                     assistant_content.push(ContentBlock::ToolUse {
+                                         id: id.to_string(),
+                                         name: name.to_string(),
+                                         input,
+                                         extra_content,
+                                     });
+                                 }
                             }
                         }
                     }
                 }
             }
+
+            tracing::info!("Parsed OpenAI-compatible response: {} tool call(s)", tool_calls.len());
 
             if assistant_content.is_empty() && tool_calls.is_empty() {
                 return Err(anyhow::anyhow!("Received empty response from OpenAI-compatible provider. Payload: {}", resp_json));
@@ -577,6 +589,7 @@ impl LlmClient for OpenAiClient {
 
             // 5. If no tool calls, turn is finished!
             if tool_calls.is_empty() {
+                tracing::info!("No tool calls returned. Turn complete.");
                 let _ = event_tx.send(AgentEvent::TurnComplete).await;
                 return Ok(history);
             }
@@ -584,6 +597,7 @@ impl LlmClient for OpenAiClient {
             // 6. Execute all tool calls
             let mut tool_results = Vec::new();
             for (id, name, input) in tool_calls {
+                tracing::info!("Executing tool '{}' with input: {}", name, input);
                 let _ = event_tx.send(AgentEvent::ToolCallStarted {
                     id: id.clone(),
                     name: name.clone(),
@@ -601,6 +615,8 @@ impl LlmClient for OpenAiClient {
                     Ok(res) => res.content.clone(),
                     Err(err) => err.to_string(),
                 };
+
+                tracing::info!("Tool '{}' finished. Result size: {} bytes, is_error={}", name, content_str.len(), is_error);
 
                 let _ = event_tx.send(AgentEvent::ToolCallFinished {
                     id: id.clone(),

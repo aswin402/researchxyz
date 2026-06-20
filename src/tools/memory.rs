@@ -33,7 +33,7 @@ impl Tool for MemorySearchTool {
         let max_results = input["max_results"].as_u64().unwrap_or(5) as usize;
 
         let manager = MemoryManager::load();
-        let matches = manager.search(query, max_results);
+        let matches = manager.search(query, max_results).await;
 
         if matches.is_empty() {
             return Ok(ToolResult {
@@ -151,7 +151,7 @@ impl Tool for MemoryStoreTool {
         let metadata = input["metadata"].clone();
 
         let mut manager = MemoryManager::load();
-        manager.add_detailed(query, summary, keywords, sources, entry_type, metadata)
+        manager.add_detailed(query, summary, keywords, sources, entry_type, metadata).await
             .map_err(|e| ToolError::Upstream(format!("Failed to save to memory file: {}", e)))?;
 
         Ok(ToolResult {

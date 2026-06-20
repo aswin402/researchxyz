@@ -111,6 +111,15 @@ Configure `config.toml` to specify your preferred LLM provider, target model, se
     cargo run --release -- configure
     ```
     *   Walks you through selecting a provider, model, and pasting your API key, then saves the configuration to `~/.config/researchxyz/config.toml`.
+*   **Headless Agent Testing Mode**:
+    ```bash
+    cargo run --release -- --test-agent "Your prompt"
+    ```
+    *   Runs the ReAct research loop directly from the command line in headless mode without initiating raw terminal drawings.
+    *   **Verbose Tracing Logs**: Append `--verbose` to stream live execution logs, tool inputs/outputs, and reasoning steps directly to `stderr` in real-time:
+        ```bash
+        cargo run --release -- --test-agent "Your prompt" --verbose
+        ```
 *   **Dual Mode Behavior**:
-    *   If your **`RESEARCHXYZ_API_KEY`** is set in your environment: Runs the real Anthropic ReAct loop, calling web scrapers, reading files, and conducting live research.
+    *   If your **`RESEARCHXYZ_API_KEY`** (or provider-specific API key env) is set in your environment: Runs the real ReAct loop, calling web scrapers, reading files, and conducting live research.
     *   If your key is **not set**: Runs in **simulation mode** to showcase interface animations, tool spinners, and document updates offline.
