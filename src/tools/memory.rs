@@ -49,7 +49,7 @@ impl Tool for MemorySearchTool {
         let mut id_counter = 1;
 
         for entry in matches {
-            content.push_str(&format!("--- Record: {} (Saved: {}) ---\n", entry.query, entry.timestamp));
+            content.push_str(&format!("--- Record: {} (Type: {:?}, Saved: {}) ---\n", entry.query, entry.entry_type, entry.timestamp));
             content.push_str(&entry.summary);
             content.push_str("\n\n");
 
@@ -87,7 +87,7 @@ impl Tool for MemoryStoreTool {
     }
 
     fn description(&self) -> &str {
-        "Store a newly synthesized query result, paper abstract, or key facts in the local persistent research memory database."
+        "Store a newly synthesized query result, paper abstract, tool experience, or key facts in the local persistent research memory database."
     }
 
     fn input_schema(&self) -> serde_json::Value {
@@ -104,6 +104,15 @@ impl Tool for MemoryStoreTool {
                     "type": "array",
                     "items": { "type": "string" },
                     "default": []
+                },
+                "entry_type": {
+                    "type": "string",
+                    "enum": ["Fact", "ToolFailure", "LinkFailure", "UserCorrection"],
+                    "default": "Fact"
+                },
+                "metadata": {
+                    "type": "object",
+                    "default": {}
                 }
             },
             "required": ["query", "summary", "keywords"]
@@ -131,8 +140,18 @@ impl Tool for MemoryStoreTool {
             None => Vec::new(),
         };
 
+        let entry_type_str = input["entry_type"].as_str().unwrap_or("Fact");
+        let entry_type = match entry_type_str {
+            "ToolFailure" => crate::core::memory::EntryType::ToolFailure,
+            "LinkFailure" => crate::core::memory::EntryType::LinkFailure,
+            "UserCorrection" => crate::core::memory::EntryType::UserCorrection,
+            _ => crate::core::memory::EntryType::Fact,
+        };
+
+        let metadata = input["metadata"].clone();
+
         let mut manager = MemoryManager::load();
-        manager.add(query, summary, keywords, sources)
+        manager.add_detailed(query, summary, keywords, sources, entry_type, metadata)
             .map_err(|e| ToolError::Upstream(format!("Failed to save to memory file: {}", e)))?;
 
         Ok(ToolResult {

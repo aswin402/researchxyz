@@ -2,14 +2,30 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
 
+#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
+pub enum EntryType {
+    Fact,
+    ToolFailure,
+    LinkFailure,
+    UserCorrection,
+}
+
+fn default_entry_type() -> EntryType {
+    EntryType::Fact
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct MemoryEntry {
     pub id: String,
     pub timestamp: String,
+    #[serde(default = "default_entry_type")]
+    pub entry_type: EntryType,
     pub query: String,
     pub summary: String,
     pub keywords: Vec<String>,
     pub sources: Vec<String>,
+    #[serde(default)]
+    pub metadata: serde_json::Value,
 }
 
 pub struct MemoryManager {
@@ -46,16 +62,30 @@ impl MemoryManager {
     }
 
     pub fn add(&mut self, query: &str, summary: &str, keywords: Vec<String>, sources: Vec<String>) -> Result<(), anyhow::Error> {
+        self.add_detailed(query, summary, keywords, sources, EntryType::Fact, serde_json::Value::Null)
+    }
+
+    pub fn add_detailed(
+        &mut self,
+        query: &str,
+        summary: &str,
+        keywords: Vec<String>,
+        sources: Vec<String>,
+        entry_type: EntryType,
+        metadata: serde_json::Value,
+    ) -> Result<(), anyhow::Error> {
         let timestamp = chrono::Local::now().to_rfc3339();
         let id = format!("{}_{}", chrono::Utc::now().timestamp_millis(), keywords.first().cloned().unwrap_or_else(|| "entry".to_string()));
         
         let entry = MemoryEntry {
             id,
             timestamp,
+            entry_type,
             query: query.to_string(),
             summary: summary.to_string(),
             keywords,
             sources,
+            metadata,
         };
         
         self.entries.push(entry);
@@ -96,6 +126,15 @@ impl MemoryManager {
                 for word in &query_words {
                     if summary_lower.contains(word) {
                         score += 1;
+                    }
+                }
+                
+                // Boost score based on entry type
+                if score > 0 {
+                    match entry.entry_type {
+                        EntryType::UserCorrection => score += 5,
+                        EntryType::ToolFailure | EntryType::LinkFailure => score += 2,
+                        EntryType::Fact => {}
                     }
                 }
                 
@@ -146,18 +185,29 @@ mod tests {
             vec![]
         ).unwrap();
 
+        // Add a User Correction entry
+        manager.add_detailed(
+            "ArXiv PDF format rules",
+            "Always compile ArXiv reports using bullet points for key findings.",
+            vec!["arxiv".to_string(), "pdf".to_string(), "format".to_string()],
+            vec![],
+            EntryType::UserCorrection,
+            serde_json::json!({ "format": "bullets" })
+        ).unwrap();
+
         // Reload to verify persistence
         let reloaded = MemoryManager::new_with_path(file_path.clone());
-        assert_eq!(reloaded.entries.len(), 2);
+        assert_eq!(reloaded.entries.len(), 3);
         
         // Search overlap
         let results = reloaded.search("Rust borrow checker", 5);
         assert_eq!(results.len(), 1);
         assert_eq!(results[0].query, "Rust memory safety guarantees");
         
-        let results_python = reloaded.search("dynamic typing", 5);
-        assert_eq!(results_python.len(), 1);
-        assert_eq!(results_python[0].query, "Python dynamic typing");
+        // Search for User Correction
+        let results_correction = reloaded.search("ArXiv PDF format details", 5);
+        assert_eq!(results_correction.len(), 1);
+        assert_eq!(results_correction[0].entry_type, EntryType::UserCorrection);
         
         // Clean up
         let _ = std::fs::remove_file(&file_path);

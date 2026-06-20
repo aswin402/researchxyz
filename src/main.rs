@@ -148,6 +148,26 @@ async fn main() -> Result<()> {
         
         println!("Using Prompt: \"{}\"\n", prompt);
 
+        // Save to persistent memory in the background if it's a workflow correction
+        if prompt.starts_with("/correct ") {
+            let correction = &prompt["/correct ".len()..];
+            let keywords: Vec<String> = correction.to_lowercase()
+                .split(|c: char| !c.is_alphanumeric())
+                .filter(|s| s.len() > 2)
+                .map(|s| s.to_string())
+                .collect();
+            let mut manager = crate::core::memory::MemoryManager::load();
+            let _ = manager.add_detailed(
+                correction,
+                correction,
+                keywords,
+                vec![],
+                crate::core::memory::EntryType::UserCorrection,
+                serde_json::Value::Null
+            );
+            println!("✓ Registered workflow correction in persistent memory.\n");
+        }
+
         let history = vec![crate::core::types::Message {
             role: crate::core::types::Role::User,
             content: vec![crate::core::types::ContentBlock::Text(prompt)],
@@ -348,6 +368,25 @@ async fn main() -> Result<()> {
                                         let tx = event_tx.clone();
                                         let prompt = trimmed.to_string();
                                         
+                                        // Save to persistent memory in the background if it's a workflow correction
+                                        if prompt.starts_with("/correct ") {
+                                            let correction = &prompt["/correct ".len()..];
+                                            let keywords: Vec<String> = correction.to_lowercase()
+                                                .split(|c: char| !c.is_alphanumeric())
+                                                .filter(|s| s.len() > 2)
+                                                .map(|s| s.to_string())
+                                                .collect();
+                                            let mut manager = crate::core::memory::MemoryManager::load();
+                                            let _ = manager.add_detailed(
+                                                correction,
+                                                correction,
+                                                keywords,
+                                                vec![],
+                                                crate::core::memory::EntryType::UserCorrection,
+                                                serde_json::Value::Null
+                                            );
+                                        }
+
                                         // Convert prompt to message history
                                         let user_msg = crate::core::types::Message {
                                             role: crate::core::types::Role::User,

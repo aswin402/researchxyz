@@ -92,7 +92,12 @@ impl LlmClient for AnthropicClient {
         \n\
         === PERSISTENT MEMORY GUIDELINES ===\n\
         1. Always begin a new research topic by calling `memory_search` to see if we have previously saved facts, paper summaries, or findings related to the topic. Leverage existing memory to save time, tokens, and api calls.\n\
-        2. When you finish your research and synthesize the final takeaways, always call `memory_store` to save the summary, keywords, and sources in the local database. This helps you remember this context for future sessions.\n\
+        2. Pay close attention to different Memory Entry Types returned by search:\n\
+           - Fact: Standard research summaries and references. Use them directly.\n\
+           - ToolFailure / LinkFailure: Historical logs of dead links, rate limits, or query patterns that failed. You MUST avoid querying these exact failed endpoints, URLs, or query keywords.\n\
+           - UserCorrection: Explicit workflow instructions or formatting corrections previously requested by the user. You MUST adjust your research plan checklist to strictly satisfy these corrections.\n\
+        3. If you encounter any tool call errors (e.g. RateLimited, or dead links), or if the user corrects your approach during a turn, you must invoke `memory_store` to cache that experience (setting `entry_type` to `ToolFailure`, `LinkFailure`, or `UserCorrection` accordingly with relevant keywords and metadata).\n\
+        4. When you finish your research and synthesize the final takeaways, always call `memory_store` (with `entry_type` as \"Fact\") to save the summary, keywords, and sources in the local database. This helps you remember this context for future sessions.\n\
         \n\
         === ACADEMIC WORKFLOW GUIDELINES ===\n\
         1. Query formulation: Start by analyzing the user prompt and formulating a precise research plan checklist.\n\
@@ -384,7 +389,12 @@ impl LlmClient for OpenAiClient {
         \n\
         === PERSISTENT MEMORY GUIDELINES ===\n\
         1. Always begin a new research topic by calling `memory_search` to see if we have previously saved facts, paper summaries, or findings related to the topic. Leverage existing memory to save time, tokens, and api calls.\n\
-        2. When you finish your research and synthesize the final takeaways, always call `memory_store` to save the summary, keywords, and sources in the local database. This helps you remember this context for future sessions.\n\
+        2. Pay close attention to different Memory Entry Types returned by search:\n\
+           - Fact: Standard research summaries and references. Use them directly.\n\
+           - ToolFailure / LinkFailure: Historical logs of dead links, rate limits, or query patterns that failed. You MUST avoid querying these exact failed endpoints, URLs, or query keywords.\n\
+           - UserCorrection: Explicit workflow instructions or formatting corrections previously requested by the user. You MUST adjust your research plan checklist to strictly satisfy these corrections.\n\
+        3. If you encounter any tool call errors (e.g. RateLimited, or dead links), or if the user corrects your approach during a turn, you must invoke `memory_store` to cache that experience (setting `entry_type` to `ToolFailure`, `LinkFailure`, or `UserCorrection` accordingly with relevant keywords and metadata).\n\
+        4. When you finish your research and synthesize the final takeaways, always call `memory_store` (with `entry_type` as \"Fact\") to save the summary, keywords, and sources in the local database. This helps you remember this context for future sessions.\n\
         \n\
         === ACADEMIC WORKFLOW GUIDELINES ===\n\
         1. Query formulation: Start by analyzing the user prompt and formulating a precise research plan checklist.\n\
